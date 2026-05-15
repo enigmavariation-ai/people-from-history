@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <rect width="600" height="600" fill="#efe9dc" />
+  <ellipse cx="300" cy="240" rx="190" ry="110" fill="#8a8278" />
+  <ellipse cx="300" cy="320" rx="160" ry="200" fill="#e6c7a4" />
+  <circle cx="240" cy="290" r="14" fill="#1a1a1a" />
+  <circle cx="360" cy="290" r="14" fill="#1a1a1a" />
+  <path d="M 222,290 Q 240,272 258,290" stroke="#5a4a3a" stroke-width="3" fill="none" stroke-linecap="round" />
+  <path d="M 342,290 Q 360,272 378,290" stroke="#5a4a3a" stroke-width="3" fill="none" stroke-linecap="round" />
+  <path d="M 296,310 L 290,360 L 310,360 L 304,310 Z" fill="#c89070" opacity="0.4" />
+  <ellipse cx="300" cy="372" rx="64" ry="13" fill="#3d2f24" />
+  <path d="M 240,420 Q 300,440 360,420" stroke="#1a1a1a" stroke-width="3" fill="none" stroke-linecap="round" />
+  <text x="300" y="568" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#73726c">placeholder portrait</text>
+</svg>
