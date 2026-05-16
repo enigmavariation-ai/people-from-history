@@ -467,13 +467,11 @@ function MobileTree(
         ))}
       </div>
 
-      {/* Spacer — absorbs any extra vertical space on taller phones */}
-      <div className="min-h-0 flex-1" />
-
-      {/* Bottom action area */}
+      {/* Action area — stacks right under the hints, no bottom anchoring.
+          Any leftover viewport height sits below this block. */}
       <div
-        className="flex-shrink-0 border-t border-(--color-rule) bg-white px-4 pt-3"
-        style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        className="flex-shrink-0 border-t border-(--color-rule) px-4 pt-3"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
       >
         {feedback.kind !== 'neutral' && <CompactFeedback feedback={feedback} />}
 
