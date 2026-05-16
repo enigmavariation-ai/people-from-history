@@ -291,10 +291,11 @@ function ProgressDots({
             <div
               key={i}
               aria-hidden
-              className="aspect-square rounded-sm border"
+              className="h-2.5 rounded-sm"
               style={{
-                background: won ? 'var(--color-amber-soft-2)' : 'transparent',
-                borderColor: won ? 'var(--color-amber-soft-2)' : 'var(--color-hairline-strong)',
+                background: won
+                  ? 'var(--color-amber-soft-2)'
+                  : 'var(--color-hairline-strong)',
               }}
             />
           );
@@ -304,11 +305,13 @@ function ProgressDots({
           <div
             key={i}
             aria-hidden
-            className="aspect-square rounded-sm border"
+            className={
+              isCurrent
+                ? 'h-2.5 rounded-sm'
+                : 'h-2.5 rounded-sm border border-(--color-hairline)'
+            }
             style={{
-              background: 'transparent',
-              borderColor: isCurrent ? 'var(--color-amber)' : 'var(--color-hairline)',
-              borderWidth: isCurrent ? 2 : 1,
+              background: isCurrent ? 'var(--color-amber)' : 'transparent',
             }}
           />
         );
