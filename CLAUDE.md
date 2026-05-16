@@ -112,17 +112,41 @@ Lives in `src/lib/matching.ts`. Normalize both guess and target: lowercase, trim
 
 ## Design system
 
-Anthropic-adjacent: clean, restrained, confident.
+Editorial / museum-plate. Restraint with selective polish — cream parchment, dark navy contrast, burnished amber, classical typography. Sourced from Claude Design hand-off (2026-05-15).
 
-- **Colors**: white background, near-black text (`#1A1A1A` headings, `#3D3D3A` body), secondary gray (`#73726C`), single accent: warm amber `#C97A2C`. Semantic states for feedback (subtle green/red/blue at low saturation).
-- **Typography**: system sans-serif. Two weights only: 400 regular, 500 medium. No 600 or 700. Sentence case everywhere — never Title Case, never ALL CAPS.
-- **No mid-sentence bolding.** Bold is for headings and labels only.
-- **No gradients, no drop shadows except subtle button shadow, no decorative effects.** Flat, clean surfaces.
-- **Borders**: hairline at low opacity, `border-radius: 8px` for cards, 6px for buttons.
+- **Backgrounds**: cream parchment `#F2E9D2` page base; lighter paper `#F8F1DE` and `#EFE5C9` for textured sections; pure white inside cards and inputs floating on top.
+- **Text**: ink `#161616` for headings, body `#3D3D3A` for prose, muted `#73726C` for secondary. Hairline rules at `#D9CFB3` (cream sections) or `rgba(22,22,22,0.10)` (general borders).
+- **Accents**: burnished amber `#B5822A` (primary brand). Soft amber tints `#F1E1BE` / `#E8CF9A` for active pills and the daily-result squares. Gold `#C99B47` used on dark navy backgrounds.
+- **Navy contrast panels**: deep navy `#0E1B33` → `#16243D` with a faint warm radial highlight; rounded 12px, used for the "How it works" section, closing CTA, and footer. Text on navy is `#E7DFCB`; gold is used for headings' italic accent words and small labels.
+- **Semantic states**: success `#3B6D11` on `#E7EFD7` with `#97C459` border; error `#A32D2D` on `#FAE1DE` with `#E89A95` border; info `#345E8C` on `#E2EAF2` with `#B7CCE0` border.
+- **Typography**:
+  - Display: **Newsreader** (Google) for hero, section headings, pull quotes, plate captions, and the daily headline. Italic for accent words like *history*, *works*, *play*, *28%* — italic in amber (or gold on navy).
+  - Sans: system stack `-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif` for body, controls, micro labels.
+  - Mono: `ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace` for archival marks like `№ 142 · 15 . V . 2026`, eyebrow labels, share-result preview.
+  - Two weights only: 400 regular, 500 medium. No 600 or 700.
+  - Sentence case everywhere. Italic — not bold — is the accent. Never ALL CAPS except short tracking-out labels (`A NEW DAILY GAME`, `Plate I · specimen`).
+- **Type scale**:
+  - Hero h1: 64px display, letter-spacing −0.022em, max-width 520px, balanced. Mobile (≤640px): 44px.
+  - Section h2: 40px display, letter-spacing −0.015em. Mobile: 28px.
+  - Sub-headline: 20px sans, muted color, max-width 560px. Mobile: 18px.
+  - Pull quote: 32px display italic, max-width 720px, balanced. Mobile: 24px.
+  - Column number marker: 56px display italic in amber. Mobile: 44px.
+  - Column heading: 24px display, weight 500.
+  - Body / input: 16px. Small: 14px. Micro: 12px. Archival: 11px mono, tracking 0.08em, uppercase.
+- **Editorial details (use sparingly)**: archival mono marks at top of game/daily screens; a single-row ornament (`hairline · amber dot · hairline`) wrapping pull quotes and bracketing the daily result; italic-serif "plate" captions under portraits; corner registration marks on matted portrait frames; circular bust silhouette wordmark; stacked `PEOPLE / FROM / HISTORY` lockup.
+- **Borders & radius**: 8px for cards and the portrait stage. 6px for buttons and inputs. 999px (full pill) for hint chips, info pills, the score pill, the floating nav, and the navy "Sign up" button. 4px for the share-preview card and matted portrait frame. 12px for the navy panels themselves.
+- **Allowed effects** (selective, deliberate):
+  - Faint paper texture (subtle two-layer radial-dot grain) on `.pfh-paper` sections only.
+  - Radial-gradient highlights on navy panels (gold-tinted, very low alpha).
+  - Backdrop-filter glassmorphism on the floating nav pill: `blur(22px) saturate(180%)` over `rgba(255,255,255,0.42)`, hairline white edge, soft inset top highlight.
+  - Subtle drop shadow on primary buttons only: `0 1px 2px rgba(0,0,0,0.05)`.
+  - Layered shadows on the glass nav pill (deeper when scrolled).
+- **Not allowed**: heavy drop shadows, vivid gradients, scale or rotate transforms on hover, neon, 3D, glow effects, busy textures, bold mid-sentence, ALL CAPS body copy, animations longer than 300ms (slider/clip transitions are 200–300ms; the correct-guess amber pulse on the score number is 1.2s and is the only exception, and uses color only — no movement).
 - **Whitespace is generous.** When in doubt, add more padding, not less.
-- **Animations max 300ms.** Nothing should feel slow or showy. Avoid scale transforms on hover — use opacity or background shifts.
+- **Hover**: subtle opacity or background-color shift, 150–200ms. Never movement.
+- **Focus**: 2px amber outline at 2px offset.
 
-Restraint is the design. The visual quietness is what signals quality.
+Restraint is still the goal. The editorial details earn their place by being precise and infrequent — if a flourish is decoration for its own sake, cut it.
 
 ## Conventions
 

@@ -5,19 +5,51 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --color-bg: #ffffff;
-  --color-heading: #1a1a1a;
+  --color-bg: #f2e9d2;
+  --color-paper: #f8f1de;
+  --color-paper-2: #efe5c9;
+  --color-ink: #161616;
   --color-body: #3d3d3a;
-  --color-brand-muted: #73726c;
-  --color-brand-amber: #c97a2c;
+  --color-muted: #73726c;
+  --color-rule: #d9cfb3;
+  --color-hairline: rgba(22, 22, 22, 0.1);
+  --color-hairline-strong: rgba(22, 22, 22, 0.16);
+
+  --color-amber: #b5822a;
+  --color-amber-hover: #b86e26;
+  --color-amber-soft: #f1e1be;
+  --color-amber-soft-2: #e8cf9a;
+  --color-gold: #c99b47;
+
+  --color-navy: #0e1b33;
+  --color-navy-2: #16243d;
+  --color-on-navy: #e7dfcb;
+  --color-on-navy-muted: rgba(231, 223, 203, 0.62);
+
+  --color-success: #3b6d11;
+  --color-success-bg: #e7efd7;
+  --color-success-border: #97c459;
+  --color-error: #a32d2d;
+  --color-error-bg: #fae1de;
+  --color-error-border: #e89a95;
+  --color-info: #345e8c;
+  --color-info-bg: #e2eaf2;
+  --color-info-border: #b7cce0;
+
+  --color-sepia-bg: #e8dcc4;
+  --color-sepia-head: #b89a6f;
+  --color-sepia-shadow: #8c7449;
 
   --radius-card: 0.5rem;
   --radius-button: 0.375rem;
+  --radius-panel: 0.75rem;
 
   --default-transition-duration: 200ms;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica,
+    Arial, sans-serif;
+  --font-display: "Newsreader", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 @layer base {
@@ -32,7 +64,6 @@
     color: var(--color-body);
     font-family: var(--font-sans);
     font-weight: 400;
-    @apply bg-background text-foreground;
   }
 
   h1,
@@ -41,12 +72,178 @@
   h4,
   h5,
   h6 {
-    color: var(--color-heading);
+    color: var(--color-ink);
     font-weight: 500;
+    margin: 0;
   }
-  * {
-    @apply border-border outline-ring/50;
+
+  button:focus-visible,
+  input:focus-visible,
+  a:focus-visible,
+  [role="slider"]:focus-visible {
+    outline: 2px solid var(--color-amber);
+    outline-offset: 2px;
   }
+}
+
+/* Reveal slider — used in landing demo and game screen. */
+input[type="range"].pfh-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  margin: 0;
+  cursor: pointer;
+}
+input[type="range"].pfh-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+input[type="range"].pfh-slider::-moz-range-track {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+input[type="range"].pfh-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+  margin-top: -7px;
+  transition: background 150ms ease;
+}
+input[type="range"].pfh-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+input[type="range"].pfh-slider:disabled::-webkit-slider-thumb {
+  background: var(--color-muted);
+}
+
+/* Paper-textured section background. */
+.pfh-paper {
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(rgba(120, 100, 60, 0.04) 1px, transparent 1.4px),
+    radial-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1.2px);
+  background-size: 6px 6px, 11px 11px;
+  background-position: 0 0, 3px 3px;
+}
+
+/* Dark navy contrast panel with warm radial highlight. */
+.pfh-navy {
+  background:
+    radial-gradient(ellipse at 80% 0%, rgba(201, 155, 71, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 0% 100%, rgba(201, 155, 71, 0.06) 0%, transparent 55%),
+    linear-gradient(180deg, var(--color-navy) 0%, var(--color-navy-2) 100%);
+  color: var(--color-on-navy);
+}
+.pfh-navy h1,
+.pfh-navy h2,
+.pfh-navy h3,
+.pfh-navy h4 {
+  color: var(--color-on-navy);
+}
+
+/* Hairline-dot-hairline ornament divider. */
+.pfh-ornament {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 880px;
+  margin: 0 auto;
+  color: var(--color-rule);
+}
+.pfh-ornament .rule {
+  flex: 1;
+  height: 1px;
+  background: var(--color-rule);
+}
+.pfh-ornament .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-amber);
+  flex-shrink: 0;
+}
+
+/* Floating glassmorphic nav pill. */
+.pfh-nav-wrap {
+  position: sticky;
+  top: 14px;
+  z-index: 60;
+  padding: 0 24px;
+  margin-top: 14px;
+  pointer-events: none;
+}
+.pfh-nav-pill {
+  pointer-events: auto;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 8px 8px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 0 0 1px rgba(0, 0, 0, 0.02),
+    0 12px 32px -8px rgba(20, 20, 25, 0.12),
+    0 4px 14px -4px rgba(20, 20, 25, 0.08);
+  transition:
+    background-color 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+.pfh-nav-pill.scrolled {
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 0 0 1px rgba(0, 0, 0, 0.03),
+    0 14px 36px -8px rgba(20, 20, 25, 0.18),
+    0 6px 18px -4px rgba(20, 20, 25, 0.1);
+}
+
+/* Animations. */
+@keyframes pfh-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.pfh-fade {
+  animation: pfh-fade-in 200ms ease;
+}
+
+@keyframes pfh-pulse-amber {
+  0% {
+    color: var(--color-amber);
+  }
+  100% {
+    color: var(--color-ink);
+  }
+}
+.pfh-pulse {
+  animation: pfh-pulse-amber 1.2s ease forwards;
 }
 
 @theme inline {

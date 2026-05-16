@@ -35,7 +35,7 @@ export function CropStage({ imageUrl, focal, startSize, revealPct }: CropStagePr
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute border-2 border-(--color-heading)"
+        className="pointer-events-none absolute border-2 border-(--color-amber)"
         style={{
           top: `${top}%`,
           left: `${left}%`,

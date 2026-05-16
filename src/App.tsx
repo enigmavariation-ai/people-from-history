@@ -10,7 +10,7 @@ function App() {
     <main className="mx-auto flex min-h-svh max-w-2xl flex-col items-center justify-center gap-10 px-6 py-12">
       <header className="text-center">
         <h1 className="text-4xl tracking-tight">People from History</h1>
-        <p className="mt-2 text-(--color-brand-muted)">
+        <p className="mt-2 text-(--color-muted)">
           Guess the figure from the smallest crop you can.
         </p>
       </header>
@@ -24,8 +24,8 @@ function App() {
 
       <div className="flex w-full flex-col gap-3">
         <div className="flex items-baseline justify-between text-sm">
-          <span className="text-(--color-brand-muted)">Reveal</span>
-          <span className="tabular-nums text-(--color-heading)">{revealPct}%</span>
+          <span className="text-(--color-muted)">Reveal</span>
+          <span className="tabular-nums text-(--color-ink)">{revealPct}%</span>
         </div>
         <input
           type="range"
@@ -34,9 +34,9 @@ function App() {
           value={revealPct}
           onChange={(e) => setRevealPct(Number(e.target.value))}
           aria-label="Reveal amount"
-          className="w-full accent-(--color-brand-amber)"
+          className="w-full accent-(--color-amber)"
         />
-        <p className="text-center text-xs text-(--color-brand-muted)">
+        <p className="text-center text-xs text-(--color-muted)">
           Hint: focused on the {sampleFigure.focal_note}
         </p>
       </div>
