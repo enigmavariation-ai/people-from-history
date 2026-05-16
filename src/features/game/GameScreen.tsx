@@ -415,15 +415,13 @@ function MobileTree(
         </div>
       )}
 
-      {/* Stage — fills remaining vertical space */}
-      <div className="flex flex-1 min-h-0 items-center justify-center p-3">
-        <div className="aspect-square h-full max-h-full max-w-full">
-          {stageContent}
-        </div>
+      {/* Stage — natural square at full width */}
+      <div className="flex flex-shrink-0 items-center justify-center px-3 pt-3">
+        <div className="w-full max-w-[440px]">{stageContent}</div>
       </div>
 
       {/* Slider (compact) */}
-      <div className="flex flex-shrink-0 items-center gap-3 px-4">
+      <div className="mt-3 flex flex-shrink-0 items-center gap-3 px-4">
         <input
           type="range"
           className="pfh-slider flex-1"
@@ -468,6 +466,9 @@ function MobileTree(
           />
         ))}
       </div>
+
+      {/* Spacer — absorbs any extra vertical space on taller phones */}
+      <div className="min-h-0 flex-1" />
 
       {/* Bottom action area */}
       <div
