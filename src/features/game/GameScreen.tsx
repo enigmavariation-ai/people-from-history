@@ -911,38 +911,41 @@ function StatTile({
   return (
     <div
       className={
-        'rounded-card border px-3.5 py-3 ' +
+        'flex items-baseline justify-between gap-2 rounded-card border px-3 py-2 ' +
         (featured
           ? 'border-(--color-ink) bg-(--color-ink) text-white'
           : 'border-(--color-hairline) bg-white')
       }
     >
-      <div
+      <span
         className={
           'font-mono text-[10px] uppercase tracking-[0.1em] ' +
           (featured ? 'text-white/60' : 'text-(--color-muted)')
         }
       >
         {label}
-      </div>
-      <div
-        className={'mt-0.5 leading-tight ' + (pulse && !featured ? 'pfh-pulse' : '')}
+      </span>
+      <span
+        className={'leading-none tabular-nums ' + (pulse && !featured ? 'pfh-pulse' : '')}
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: 24,
+          fontSize: 18,
           fontWeight: 600,
-          color: featured ? '#fff' : (pulse ? 'var(--color-amber)' : 'var(--color-ink)'),
+          color: featured ? '#fff' : pulse ? 'var(--color-amber)' : 'var(--color-ink)',
         }}
       >
         {value}
         {sub && (
           <span
-            className={'ml-0.5 text-base font-normal ' + (featured ? 'text-white/45' : 'text-(--color-muted)')}
+            className={
+              'ml-0.5 text-xs font-normal ' +
+              (featured ? 'text-white/50' : 'text-(--color-muted)')
+            }
           >
             {sub}
           </span>
         )}
-      </div>
+      </span>
     </div>
   );
 }
