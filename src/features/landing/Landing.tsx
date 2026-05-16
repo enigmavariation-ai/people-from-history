@@ -4,6 +4,8 @@ import { BrandMark } from '@/components/BrandMark';
 import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
 import { HeroPortrait } from '@/features/landing/HeroPortrait';
+import { matches } from '@/lib/matching';
+import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
 
 type LandingProps = { goTo: (s: Screen) => void };
@@ -11,10 +13,13 @@ type LandingProps = { goTo: (s: Screen) => void };
 type DemoFeedback = { kind: 'success' | 'error'; text: string } | null;
 
 export function Landing({ goTo }: LandingProps) {
+  const { figures } = useFigures();
   const [scrolled, setScrolled] = useState(false);
   const [demoReveal, setDemoReveal] = useState(15);
   const [demoGuess, setDemoGuess] = useState('');
   const [demoFeedback, setDemoFeedback] = useState<DemoFeedback>(null);
+
+  const demoFigure = figures.find((f) => f.id === 'einstein') ?? sampleFigure;
 
   useEffect(() => {
     const root = document.getElementById('landing-scroll');
@@ -26,10 +31,10 @@ export function Landing({ goTo }: LandingProps) {
 
   const submitDemo = (e: React.FormEvent) => {
     e.preventDefault();
-    const g = demoGuess.trim().toLowerCase();
+    const g = demoGuess.trim();
     if (!g) return;
-    if (g.includes('einstein')) {
-      setDemoFeedback({ kind: 'success', text: "Correct — that's Albert Einstein." });
+    if (matches(g, [demoFigure.name, ...demoFigure.aliases])) {
+      setDemoFeedback({ kind: 'success', text: `Correct — that's ${demoFigure.name}.` });
     } else {
       setDemoFeedback({ kind: 'error', text: 'Not quite. Try revealing more.' });
     }
@@ -176,9 +181,9 @@ export function Landing({ goTo }: LandingProps) {
 
           <MattedPortrait>
             <CropStage
-              imageUrl={sampleFigure.image_url}
-              focal={{ x: sampleFigure.focal_x, y: sampleFigure.focal_y }}
-              startSize={sampleFigure.start_size}
+              imageUrl={demoFigure.image_url ?? sampleFigure.image_url}
+              focal={{ x: demoFigure.focal_x, y: demoFigure.focal_y }}
+              startSize={demoFigure.start_size}
               revealPct={demoReveal}
             />
           </MattedPortrait>
