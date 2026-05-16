@@ -267,7 +267,10 @@ input[type="range"].pfh-slider:disabled::-webkit-slider-thumb {
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
+  /* --color-muted intentionally omitted: shadcn's `--muted` (light-gray bg
+     tint) would shadow our brand --color-muted: #73726c (muted body text).
+     If shadcn components ever need `bg-muted`, restore this line and rename
+     our brand token instead. */
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
