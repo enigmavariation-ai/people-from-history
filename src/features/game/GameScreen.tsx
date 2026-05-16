@@ -452,7 +452,7 @@ export function RoundChrome(props: RoundChromeProps) {
             <div className="hidden md:block">
               <DossierHeader first>This round</DossierHeader>
               <div className="mb-6 grid grid-cols-3 gap-2.5">
-                <StatTile label="Potential" value={`${potential}`} sub="/100" featured />
+                <StatTile label="Potential" value={`${potential}`} sub="/90" featured />
                 <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
                 <StatTile label={streakLabel} value={`${streak}`} />
               </div>
@@ -499,7 +499,7 @@ export function RoundChrome(props: RoundChromeProps) {
                 <button
                   onClick={onGiveUp}
                   disabled={!figure}
-                  className="text-sm text-(--color-muted) hover:text-(--color-body) disabled:opacity-50"
+                  className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-hairline-strong) bg-transparent px-5 py-2.5 text-sm font-medium text-(--color-body) transition-colors duration-150 hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Give up &amp; reveal
                 </button>
