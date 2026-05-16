@@ -5,26 +5,10 @@ import type { Difficulty } from '@/types/figure';
 
 type PlaySetupProps = { goTo: (s: Screen) => void };
 
-const PRACTICE_DIFFICULTIES: ReadonlyArray<{
-  key: Difficulty;
-  label: string;
-  blurb: string;
-}> = [
-  {
-    key: 'easy',
-    label: 'Easy',
-    blurb: 'Globally famous figures — the names you grew up with.',
-  },
-  {
-    key: 'medium',
-    label: 'Medium',
-    blurb: 'Recognizable, not handed to you. Spans fields, eras, and continents.',
-  },
-  {
-    key: 'hard',
-    label: 'Hard',
-    blurb: 'Deep cuts. Philosophers, obscure royals, ancients — for the well-read.',
-  },
+const PRACTICE_DIFFICULTIES: ReadonlyArray<{ key: Difficulty; label: string }> = [
+  { key: 'easy', label: 'Easy' },
+  { key: 'medium', label: 'Medium' },
+  { key: 'hard', label: 'Hard' },
 ];
 
 function currentDifficulty(): Difficulty {
@@ -33,9 +17,29 @@ function currentDifficulty(): Difficulty {
   return 'easy';
 }
 
+function loadLastRunTotal(): number | null {
+  const raw = loadString('challenge:lastRun');
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'total' in parsed &&
+      typeof (parsed as { total: unknown }).total === 'number'
+    ) {
+      return (parsed as { total: number }).total;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function PlaySetup({ goTo }: PlaySetupProps) {
   const { figures, loading } = useFigures();
   const current = currentDifficulty();
+  const lastRunTotal = loadLastRunTotal();
 
   const counts: Record<Difficulty, number> = {
     easy: figures.filter((f) => f.difficulty === 'easy').length,
@@ -54,8 +58,8 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
 
   return (
     <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[640px] px-6 pb-24 pt-12">
-        <div className="mb-10">
+      <div className="mx-auto max-w-[720px] px-6 pb-24 pt-10">
+        <div className="mb-8">
           <a
             href="#home"
             onClick={(e) => {
@@ -68,72 +72,65 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
           </a>
         </div>
 
-        <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-          § Today
-        </div>
         <h1
-          className="mb-3"
+          className="mb-10"
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: 40,
-            lineHeight: 1.1,
-            fontWeight: 400,
-            letterSpacing: '-0.015em',
+            fontSize: 36,
+            lineHeight: 1.05,
+            fontWeight: 500,
+            letterSpacing: '-0.02em',
+            color: 'var(--color-ink)',
             textWrap: 'balance',
           }}
         >
-          Choose your{' '}
-          <em className="font-normal italic text-(--color-amber)">mode</em>.
+          What's it going to be?
         </h1>
-        <p className="mb-10 text-lg leading-normal text-(--color-muted)">
-          One competitive run, or open-ended practice at a tier of your choosing.
-        </p>
 
-        {/* Featured: Challenge */}
+        {/* 01 · CHALLENGE */}
+        <SectionMark>01 · Challenge</SectionMark>
         <button
           onClick={startChallenge}
-          className="group mb-10 flex w-full items-start gap-5 rounded-card border-2 border-(--color-amber) bg-(--color-amber-soft)/30 px-6 py-7 text-left transition-colors duration-150 hover:bg-(--color-amber-soft)/50"
+          className="pfh-navy group mb-12 block w-full rounded-panel px-7 py-7 text-left transition-all duration-200 hover:translate-x-0.5"
         >
-          <span className="font-display text-4xl italic leading-none text-(--color-amber)">
-            01
-          </span>
-          <span className="flex-1">
-            <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-amber)">
-              Featured
-            </div>
-            <div
-              className="mb-2"
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 26,
-                fontWeight: 500,
-                color: 'var(--color-ink)',
-                letterSpacing: '-0.01em',
-                lineHeight: 1.1,
-              }}
-            >
-              10-figure challenge
-            </div>
-            <div className="text-sm leading-snug text-(--color-body)">
-              The competitive run. Starts easy and climbs as you answer correctly. One score per run, posted to the leaderboard.
-            </div>
-            <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-              10 rounds · adaptive · today + all-time leaderboards
-            </div>
-          </span>
-          <span className="self-center font-display text-base italic text-(--color-amber) opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-            start →
-          </span>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-(--color-gold)">
+              10 rounds · adaptive · leaderboard
+            </span>
+            {lastRunTotal !== null && (
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-on-navy-muted)">
+                Last: {lastRunTotal} pts
+              </span>
+            )}
+          </div>
+          <h2
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 32,
+              lineHeight: 1.05,
+              fontWeight: 500,
+              letterSpacing: '-0.015em',
+              color: 'var(--color-on-navy)',
+            }}
+          >
+            Climb the <em className="font-normal italic text-(--color-gold)">leaderboard</em>.
+          </h2>
+          <p className="mt-2 text-sm text-(--color-on-navy-muted)">
+            Difficulty escalates as you score. One run, one number.
+          </p>
+          <div className="mt-6 inline-flex items-center gap-2 font-display text-base italic text-(--color-gold) transition-all duration-200 group-hover:gap-3">
+            Start
+            <span>→</span>
+          </div>
         </button>
 
-        <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-          § Practice
-        </div>
-        <p className="mb-5 text-sm text-(--color-muted)">
-          Open-ended rounds at a fixed difficulty. No leaderboard — your own score keeps building.
+        {/* 02 · PRACTICE */}
+        <SectionMark>02 · Practice</SectionMark>
+        <p className="mb-4 text-sm text-(--color-muted)">
+          Pick a tier and play as long as you want. No leaderboard.
         </p>
 
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-3 gap-2">
           {PRACTICE_DIFFICULTIES.map((d) => {
             const count = counts[d.key];
             const selected = d.key === current;
@@ -142,36 +139,67 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
                 key={d.key}
                 onClick={() => startPractice(d.key)}
                 className={
-                  'group flex items-start gap-5 rounded-card border bg-white px-6 py-5 text-left transition-colors duration-150 ' +
+                  'group flex flex-col items-start gap-1 rounded-card border bg-white px-4 py-4 text-left transition-colors duration-150 ' +
                   (selected
                     ? 'border-(--color-amber) bg-(--color-amber-soft)/40'
                     : 'border-(--color-hairline) hover:border-(--color-hairline-strong) hover:bg-(--color-paper)')
                 }
               >
-                <span className="flex-1">
-                  <span className="block font-display text-xl font-medium text-(--color-ink)">
+                <span className="flex w-full items-baseline justify-between">
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: 22,
+                      fontWeight: 500,
+                      color: 'var(--color-ink)',
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
                     {d.label}
-                    {selected && (
-                      <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-amber)">
-                        last used
-                      </span>
-                    )}
                   </span>
-                  <span className="mt-1 block text-sm leading-snug text-(--color-muted)">
-                    {d.blurb}
-                  </span>
-                  <span className="mt-2 block font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-                    {loading ? '…' : count} figures in the pool
-                  </span>
+                  <TierMark difficulty={d.key} />
                 </span>
-                <span className="self-center font-display text-sm italic text-(--color-amber) opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                  start →
+                <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
+                  {loading ? '…' : `${count} figures`}
                 </span>
+                {selected && (
+                  <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-(--color-amber)">
+                    last played
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
       </div>
     </div>
+  );
+}
+
+function SectionMark({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
+      {children}
+    </div>
+  );
+}
+
+// Simple chevron indicator for tier — 1/2/3 stacked dots.
+function TierMark({ difficulty }: { difficulty: Difficulty }) {
+  const count = difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3;
+  return (
+    <span className="inline-flex items-end gap-0.5 pb-0.5">
+      {[1, 2, 3].map((n) => (
+        <span
+          key={n}
+          aria-hidden
+          className="block w-1 rounded-sm"
+          style={{
+            height: n === 1 ? 5 : n === 2 ? 8 : 11,
+            background: n <= count ? 'var(--color-amber)' : 'var(--color-hairline)',
+          }}
+        />
+      ))}
+    </span>
   );
 }
