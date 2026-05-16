@@ -56,7 +56,7 @@ export function Landing({ goTo }: LandingProps) {
           <BrandMark onClick={() => goTo('landing')} />
           <div className="pfh-nav-links flex items-center gap-8">
             {[
-              { label: 'Play', target: 'game' as const },
+              { label: 'Play', target: 'play-setup' as const },
               { label: 'How to play', target: null },
               { label: 'Leaderboard', target: null },
               { label: 'About', target: null },
@@ -83,7 +83,7 @@ export function Landing({ goTo }: LandingProps) {
               Log in
             </a>
             <button
-              onClick={() => goTo('game')}
+              onClick={() => goTo('play-setup')}
               className="flex-shrink-0 whitespace-nowrap rounded-full border border-(--color-navy) bg-(--color-navy) px-[22px] py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#1F2D49]"
             >
               Sign up
@@ -123,7 +123,7 @@ export function Landing({ goTo }: LandingProps) {
             </p>
             <div className="mb-10 flex flex-wrap gap-3">
               <button
-                onClick={() => goTo('game')}
+                onClick={() => goTo('play-setup')}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49]"
               >
                 Play today's puzzle →
@@ -349,7 +349,7 @@ export function Landing({ goTo }: LandingProps) {
           </p>
           <div className="flex flex-col items-center gap-4">
             <button
-              onClick={() => goTo('game')}
+              onClick={() => goTo('play-setup')}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
             >
               Play now →

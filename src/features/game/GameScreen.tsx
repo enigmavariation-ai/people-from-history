@@ -4,7 +4,13 @@ import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
 import { matches } from '@/lib/matching';
 import { scoreGuess } from '@/lib/scoring';
-import { loadNumber, loadStringSet, saveNumber, saveStringSet } from '@/lib/storage';
+import {
+  loadNumber,
+  loadString,
+  loadStringSet,
+  saveNumber,
+  saveStringSet,
+} from '@/lib/storage';
 import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
 import type { Difficulty, Figure } from '@/types/figure';
@@ -33,6 +39,12 @@ const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   medium: 'Medium',
   hard: 'Hard',
 };
+
+function loadDifficulty(): Difficulty {
+  const v = loadString('difficulty');
+  if (v === 'easy' || v === 'medium' || v === 'hard') return v;
+  return 'easy';
+}
 
 function hintValue(figure: Figure, key: HintType): string {
   switch (key) {
@@ -88,7 +100,7 @@ function selectNextFigure(
 export function GameScreen({ goTo }: GameScreenProps) {
   const { figures, loading, error } = useFigures();
 
-  const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [difficulty] = useState<Difficulty>(loadDifficulty);
   const [figure, setFigure] = useState<Figure | null>(null);
   const [reveal, setReveal] = useState(10);
   const [guess, setGuess] = useState('');
@@ -236,8 +248,18 @@ export function GameScreen({ goTo }: GameScreenProps) {
             People from{' '}
             <em className="font-normal italic text-(--color-amber)">History</em>
           </div>
-          <div className="mt-1.5 text-sm text-(--color-muted)">
-            Round {round || 1} · {DIFFICULTY_LABEL[difficulty]}
+          <div className="mt-1.5 flex items-baseline gap-2 text-sm text-(--color-muted)">
+            <span>Round {round || 1} · {DIFFICULTY_LABEL[difficulty]}</span>
+            <a
+              href="#change"
+              onClick={(e) => {
+                e.preventDefault();
+                goTo('play-setup');
+              }}
+              className="text-xs text-(--color-amber) no-underline hover:underline"
+            >
+              change
+            </a>
           </div>
         </header>
 
@@ -252,26 +274,6 @@ export function GameScreen({ goTo }: GameScreenProps) {
           </span>{' '}
           · Streak <span className="text-(--color-ink)">{streak}</span> · Round{' '}
           <span className="text-(--color-ink)">{round || 1}</span>
-        </div>
-
-        <div className="mb-6 flex gap-2">
-          {(['easy', 'medium', 'hard'] as const).map((d) => {
-            const active = d === difficulty;
-            return (
-              <button
-                key={d}
-                onClick={() => setDifficulty(d)}
-                className={
-                  'min-h-10 flex-1 rounded-button border px-3 py-2.5 text-sm font-medium transition-colors duration-150 ' +
-                  (active
-                    ? 'border-(--color-amber) bg-(--color-amber-soft) text-(--color-amber)'
-                    : 'border-(--color-hairline) bg-transparent text-(--color-muted)')
-                }
-              >
-                {DIFFICULTY_LABEL[d]}
-              </button>
-            );
-          })}
         </div>
 
         {loading && !figure ? (

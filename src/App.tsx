@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ProtoNav, type Screen } from '@/components/ProtoNav';
 import { DailyResult } from '@/features/daily/DailyResult';
 import { GameScreen } from '@/features/game/GameScreen';
+import { PlaySetup } from '@/features/game/PlaySetup';
 import { Landing } from '@/features/landing/Landing';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
       <ProtoNav screen={screen} goTo={goTo} />
       <div className="min-h-0 flex-1">
         {screen === 'landing' && <Landing goTo={goTo} />}
+        {screen === 'play-setup' && <PlaySetup goTo={goTo} />}
         {screen === 'game' && <GameScreen goTo={goTo} />}
         {screen === 'daily' && <DailyResult goTo={goTo} />}
       </div>

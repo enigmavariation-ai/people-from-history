@@ -1,5 +1,6 @@
 export const SCREENS = [
   { id: 'landing', label: 'Landing' },
+  { id: 'play-setup', label: 'Setup' },
   { id: 'game', label: 'Play' },
   { id: 'daily', label: 'Daily result' },
 ] as const;

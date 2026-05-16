@@ -37,3 +37,19 @@ export function saveStringSet(key: string, value: Set<string>): void {
     // ignore quota / privacy-mode errors
   }
 }
+
+export function loadString(key: string): string | null {
+  try {
+    return localStorage.getItem(PREFIX + key);
+  } catch {
+    return null;
+  }
+}
+
+export function saveString(key: string, value: string): void {
+  try {
+    localStorage.setItem(PREFIX + key, value);
+  } catch {
+    // ignore quota / privacy-mode errors
+  }
+}

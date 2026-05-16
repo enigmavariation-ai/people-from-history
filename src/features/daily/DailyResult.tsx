@@ -137,7 +137,7 @@ Day ${streakDay} streak`}
             href="#"
             onClick={(e) => {
               e.preventDefault();
-              goTo('game');
+              goTo('play-setup');
             }}
             className="text-sm font-medium text-(--color-amber) no-underline"
           >
