@@ -636,10 +636,10 @@ function DesktopTree(
   } = props;
 
   return (
-    <div className="hidden h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg) md:block">
-      <div className="mx-auto max-w-[1040px]">
+    <div className="hidden h-[calc(100vh-41px)] flex-col bg-(--color-bg) md:flex">
+      <div className="mx-auto flex w-full max-w-[1040px] flex-1 min-h-0 flex-col">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-8 pb-3 pt-6">
+        <div className="flex flex-shrink-0 items-center justify-between px-8 pb-3 pt-6">
           <button
             onClick={goHome}
             className="inline-flex items-center gap-1.5 text-sm text-(--color-body) no-underline"
@@ -666,19 +666,19 @@ function DesktopTree(
           </button>
         </div>
 
-        <div className="border-t border-(--color-rule)" />
+        <div className="flex-shrink-0 border-t border-(--color-rule)" />
 
-        {topInsert && <div className="px-5 pt-4 md:px-8">{topInsert}</div>}
+        {topInsert && <div className="flex-shrink-0 px-8 pt-4">{topInsert}</div>}
 
         {/* Body grid */}
-        <div className="md:grid md:grid-cols-[1.25fr_1fr] md:gap-0">
+        <div className="grid flex-1 min-h-0 grid-cols-[1.25fr_1fr] gap-0">
           {/* Left zone: title + stage + slider */}
-          <div className="px-5 pb-2 pt-5 md:border-r md:border-(--color-rule) md:px-8 md:pb-7 md:pt-7">
+          <div className="flex min-h-0 flex-col overflow-hidden border-r border-(--color-rule) px-8 pb-7 pt-7">
             <h2
-              className="leading-tight"
+              className="flex-shrink-0 leading-tight"
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 30,
+                fontSize: 28,
                 fontWeight: 500,
                 color: 'var(--color-ink)',
                 letterSpacing: '-0.015em',
@@ -687,15 +687,23 @@ function DesktopTree(
               People from{' '}
               <em className="font-normal italic text-(--color-amber)">History</em>
             </h2>
-            <div className="mt-1.5 text-sm text-(--color-muted)">
+            <div className="flex-shrink-0 mt-1.5 text-sm text-(--color-muted)">
               <span className="font-medium text-(--color-ink)">{subtitleLeft}</span>
               {' · '}
               {hintsUsedCount === 0 ? 'No hints used' : `${hintsUsedCount} hint${hintsUsedCount === 1 ? '' : 's'} used`}
             </div>
 
-            <div className="mt-5">{stageContent}</div>
+            {/* Stage — square, sized to fit available row height */}
+            <div className="mt-4 flex flex-1 min-h-0 items-center justify-center">
+              <div
+                className="aspect-square"
+                style={{ width: 'min(100%, calc(100vh - 340px))' }}
+              >
+                {stageContent}
+              </div>
+            </div>
 
-            <div className="mt-5 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+            <div className="mt-4 flex-shrink-0 grid grid-cols-[auto_1fr_auto] items-center gap-3">
               <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">Reveal</span>
               <input
                 type="range"
@@ -727,24 +735,21 @@ function DesktopTree(
                 {visualReveal}%
               </span>
             </div>
-            <div className="mt-2 text-xs text-(--color-muted)">
+            <div className="flex-shrink-0 mt-2 text-xs text-(--color-muted)">
               Drag to see more. <span className="text-(--color-ink)">Each +1% costs 1 point</span> from your potential.
             </div>
           </div>
 
-          {/* Right zone: dossier */}
-          <div className="px-5 pb-7 pt-5 md:bg-(--color-paper) md:px-8 md:pt-7">
-            {/* Desktop-only stats grid */}
-            <div className="hidden md:block">
-              <DossierHeader first>This round</DossierHeader>
-              <div className="mb-6 grid grid-cols-3 gap-2.5">
-                <StatTile label="Potential" value={`${potential}`} sub={`/${potentialMax}`} featured />
-                <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
-                <StatTile label={streakLabel} value={`${streak}`} />
-              </div>
+          {/* Right zone: dossier — scrolls internally if content is taller than row */}
+          <div className="min-h-0 overflow-y-auto bg-(--color-paper) px-8 pb-7 pt-7">
+            <DossierHeader first>This round</DossierHeader>
+            <div className="mb-6 grid grid-cols-3 gap-2.5">
+              <StatTile label="Potential" value={`${potential}`} sub={`/${potentialMax}`} featured />
+              <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
+              <StatTile label={streakLabel} value={`${streak}`} />
             </div>
 
-            <DossierHeader className="hidden md:block">Your guess</DossierHeader>
+            <DossierHeader>Your guess</DossierHeader>
             <form onSubmit={onSubmit} className="mb-4 flex gap-2">
               <input
                 type="text"
