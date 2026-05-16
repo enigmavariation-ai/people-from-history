@@ -12,7 +12,7 @@ A single historical portrait is shown with most of it hidden. Only a small recta
 
 ## Game modes (build in this order)
 
-1. **10-figure challenge** — the primary competitive mode. Adaptive difficulty: starts on Easy, climbs a tier after 2 consecutive correct (per-streak bump). Wrong answer / give-up resets the streak; tier never drops. Hard caps the climb. Score = sum of per-round scores with a difficulty multiplier (Easy ×1, Medium ×1.5, Hard ×2). One score per run, posted to the leaderboard.
+1. **10-figure challenge** — the primary competitive mode. Adaptive difficulty: starts on Easy, climbs a tier after 2 consecutive correct (per-streak bump). Give-up drops a tier (Hard → Medium → Easy, stays at Easy) and resets the streak. Hard caps the climb. Score = sum of per-round scores with a difficulty multiplier (Easy ×1, Medium ×1.5, Hard ×2). One score per run, posted to the leaderboard.
 2. **Practice (Easy / Medium / Hard)** — open-ended single-player practice at a fixed difficulty. Mechanics identical to the old "endless" mode (round → reveal → guess → score, repeating). No leaderboard; cumulative score persists locally in `localStorage`. No difficulty multiplier — flat `scoreGuess` so personal-best comparisons stay fair.
 3. **Daily challenge** — one figure per day, same for everyone, Wordle-style shareable result. Open questions: one attempt vs unlimited tries; share-grid semantics (reveal % buckets vs attempt count).
 4. **Async multiplayer** — challenge a friend via shared URL, they play the same 5 figures.

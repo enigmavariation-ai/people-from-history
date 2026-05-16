@@ -265,6 +265,7 @@ export type RoundChromeProps = {
   visualReveal: number;
   onReveal: (v: number) => void;
   potential: number;
+  potentialMax?: number; // defaults to 90 (Practice ceiling); Challenge passes 90 × tier multiplier
   score: number;
   streak: number;
   outcome: Outcome;
@@ -296,6 +297,7 @@ export function RoundChrome(props: RoundChromeProps) {
     score,
     streak,
     pulse,
+    potentialMax = 90,
     scoreLabel = 'Score',
     streakLabel = 'Streak',
     nextLabel = 'Next figure',
@@ -335,6 +337,7 @@ export function RoundChrome(props: RoundChromeProps) {
       <MobileTree {...props} stageContent={stageContent} />
       <DesktopTree
         {...props}
+        potentialMax={potentialMax}
         scoreLabel={scoreLabel}
         streakLabel={streakLabel}
         nextLabel={nextLabel}
@@ -591,6 +594,7 @@ function CompactFeedback({ feedback }: { feedback: Feedback }) {
 function DesktopTree(
   props: RoundChromeProps & {
     stageContent: React.ReactNode;
+    potentialMax: number;
     scoreLabel: string;
     streakLabel: string;
     nextLabel: string;
@@ -623,6 +627,7 @@ function DesktopTree(
     onGiveUp,
     onNext,
     footMeta,
+    potentialMax,
     scoreLabel,
     streakLabel,
     nextLabel,
@@ -733,7 +738,7 @@ function DesktopTree(
             <div className="hidden md:block">
               <DossierHeader first>This round</DossierHeader>
               <div className="mb-6 grid grid-cols-3 gap-2.5">
-                <StatTile label="Potential" value={`${potential}`} sub="/90" featured />
+                <StatTile label="Potential" value={`${potential}`} sub={`/${potentialMax}`} featured />
                 <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
                 <StatTile label={streakLabel} value={`${streak}`} />
               </div>

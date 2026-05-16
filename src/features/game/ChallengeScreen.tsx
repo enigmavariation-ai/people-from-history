@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { RoundChrome } from '@/features/game/GameScreen';
 import { matches } from '@/lib/matching';
-import { scoreChallengeRound } from '@/lib/scoring';
+import { DIFFICULTY_MULTIPLIER, scoreChallengeRound } from '@/lib/scoring';
 import { saveString } from '@/lib/storage';
 import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
@@ -41,6 +41,12 @@ function nextTier(t: Difficulty): Difficulty {
   if (t === 'easy') return 'medium';
   if (t === 'medium') return 'hard';
   return 'hard';
+}
+
+function tierBelow(t: Difficulty): Difficulty {
+  if (t === 'hard') return 'medium';
+  if (t === 'medium') return 'easy';
+  return 'easy';
 }
 
 function pickRandom<T>(pool: T[]): T | null {
@@ -168,6 +174,8 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
         newStreak = 0;
       }
     } else {
+      // Lost (gave up): drop a tier and reset streak. Easy floors.
+      newTier = tierBelow(tier);
       newStreak = 0;
     }
 
@@ -196,6 +204,7 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
   const runningTotal = results.reduce((s, r) => s + r.finalScore, 0) + pendingScore;
 
   const potential = figure ? scoreChallengeRound(reveal, usedHints, tier) : 0;
+  const potentialMax = Math.round(90 * DIFFICULTY_MULTIPLIER[tier]);
 
   return (
     <RoundChrome
@@ -217,6 +226,7 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
         if (v > reveal) setReveal(v);
       }}
       potential={potential}
+      potentialMax={potentialMax}
       score={runningTotal}
       streak={tierStreak}
       outcome={outcome}
