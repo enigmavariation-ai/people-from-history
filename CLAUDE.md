@@ -22,7 +22,11 @@ Build order: ✅ Practice (was endless) → 🚧 Challenge core loop (in progres
 
 ### Leaderboard scope (challenge mode only)
 
-The 10-figure challenge writes runs to a `runs` Supabase table on completion. Two views: top-10 today, top-10 all-time. Anonymous-by-default — nickname is a plain text input on the end screen, no auth. No login until CLAUDE.md says so.
+The 10-figure challenge writes runs to a `runs` Supabase table on completion. Two views: top-10 today, top-10 all-time.
+
+**Identity: anonymous Supabase auth.** Visitors get an opaque `user_id` via `supabase.auth.signInAnonymously()` (no signup, no email, no password — just a cookie-persisted anon session). A `profiles` table stores the chosen nickname per `user_id`; runs reference `user_id` and denormalize the nickname for join-free leaderboard queries. This is the only currently-allowed exception to "no user accounts" — it's the minimum identity for a meaningful leaderboard, with zero UI friction.
+
+**Cross-device sync is not supported yet** — anon users are device-scoped. The upgrade path is a future "claim your profile" flow that converts an anon user to a real account (email magic-link or OAuth via Supabase Auth) without losing the existing `user_id` or run history. That account-upgrade flow is out of scope until we add a paid tier ("save your stats across devices" is the natural pitch).
 
 ## Tech stack
 
@@ -191,8 +195,8 @@ For each figure, I (the human) source the image and tag the focal point manually
 
 ## Out of scope (do not build until I ask)
 
-- User accounts and login (single-player works fine with localStorage)
-- ~~Leaderboards~~ → now in scope, but only for the 10-figure challenge mode, anonymous (nickname + score, no auth). See "Game modes" above. Endless practice stays leaderboard-free.
+- User accounts and login → anonymous Supabase auth is allowed for the Challenge leaderboard (`signInAnonymously` only, no signup UI). Real accounts / email / OAuth / password reset stay out of scope until we ship the "claim your profile" upgrade flow as part of a paid tier.
+- ~~Leaderboards~~ → in scope for the 10-figure challenge only (today + all-time, top-10 each). Practice mode stays leaderboard-free.
 - Themed packs / paid content
 - Mobile app (web only for now)
 - Analytics integration

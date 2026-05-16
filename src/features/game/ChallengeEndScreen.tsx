@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { ensureAnonAuth, getNickname, getTopRuns, submitRun, type Run } from '@/lib/runs';
 import { loadString } from '@/lib/storage';
 import type { Screen } from '@/components/ProtoNav';
 import type { Difficulty } from '@/types/figure';
@@ -12,6 +13,8 @@ type LastRun = {
   total: number;
   finishedAt: string;
 };
+
+type Board = 'today' | 'all-time';
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   easy: 'E',
@@ -55,14 +58,76 @@ function buildShareText(run: LastRun): string {
   ].join('\n');
 }
 
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const min = Math.round(diffMs / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  return `${day}d ago`;
+}
+
 export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
   const [run] = useState<LastRun | null>(() => loadLastRun());
   const [copied, setCopied] = useState(false);
 
+  // Identity + leaderboard state
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [nickname, setNickname] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [activeBoard, setActiveBoard] = useState<Board>('today');
+  const [todayRuns, setTodayRuns] = useState<Run[] | null>(null);
+  const [allTimeRuns, setAllTimeRuns] = useState<Run[] | null>(null);
+  const [boardError, setBoardError] = useState<string | null>(null);
+
+  // Init: anon auth + pre-fill nickname from profile.
   useEffect(() => {
-    if (!run) return;
-    // No-op effect — present in case we want to send to leaderboard later.
-  }, [run]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const uid = await ensureAnonAuth();
+        if (cancelled) return;
+        setCurrentUserId(uid);
+        const saved = await getNickname();
+        if (!cancelled && saved) setNickname(saved);
+      } catch (e) {
+        // Auth/profile errors are non-fatal — user can still see their
+        // result and the share text. They just can't post or load the
+        // leaderboard.
+        console.warn('Anon auth / nickname lookup failed', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch leaderboards after a successful submit.
+  useEffect(() => {
+    if (!isSubmitted) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [today, allTime] = await Promise.all([
+          getTopRuns('today'),
+          getTopRuns('all-time'),
+        ]);
+        if (cancelled) return;
+        setTodayRuns(today);
+        setAllTimeRuns(allTime);
+      } catch (e) {
+        if (cancelled) return;
+        setBoardError(e instanceof Error ? e.message : 'Failed to load leaderboard.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSubmitted]);
 
   if (!run) {
     return (
@@ -111,6 +176,28 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting || !run) return;
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      await submitRun({
+        nickname,
+        score: run.total,
+        correctCount: correct,
+        figureIds: run.results.map((r) => r.figureId),
+      });
+      setIsSubmitted(true);
+    } catch (e) {
+      setSubmitError(
+        e instanceof Error ? e.message : 'Couldn\'t submit your score.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -184,6 +271,52 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
 
         <RoundsTable results={run.results} />
 
+        {/* Leaderboard submission / display */}
+        <div className="mt-10">
+          {!isSubmitted ? (
+            <form onSubmit={handleSubmit}>
+              <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
+                Post to the leaderboard
+              </div>
+              <p className="mb-4 text-sm text-(--color-muted)">
+                Pick a nickname — it'll stick on this device for future runs.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Your nickname"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  maxLength={32}
+                  disabled={isSubmitting}
+                  className="min-h-11 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) placeholder:text-(--color-muted) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2]"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting || nickname.trim().length === 0}
+                  className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Posting…' : 'Submit'}
+                </button>
+              </div>
+              {submitError && (
+                <div className="mt-3 rounded border border-(--color-error-border) bg-(--color-error-bg) px-3 py-2 text-xs text-(--color-error)">
+                  {submitError}
+                </div>
+              )}
+            </form>
+          ) : (
+            <LeaderboardPanel
+              activeBoard={activeBoard}
+              onSwitchBoard={setActiveBoard}
+              todayRuns={todayRuns}
+              allTimeRuns={allTimeRuns}
+              error={boardError}
+              currentUserId={currentUserId}
+            />
+          )}
+        </div>
+
         <button
           onClick={copy}
           className="mb-5 mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
@@ -202,10 +335,6 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
           <div className="rule" />
           <div className="dot" />
           <div className="rule" />
-        </div>
-
-        <div className="mb-3.5 text-center text-sm text-(--color-muted)">
-          Leaderboard coming soon — your score will post automatically.
         </div>
 
         <div className="flex flex-col items-center gap-2 text-center">
@@ -231,6 +360,114 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
           </a>
         </div>
       </div>
+    </div>
+  );
+}
+
+function LeaderboardPanel({
+  activeBoard,
+  onSwitchBoard,
+  todayRuns,
+  allTimeRuns,
+  error,
+  currentUserId,
+}: {
+  activeBoard: Board;
+  onSwitchBoard: (b: Board) => void;
+  todayRuns: Run[] | null;
+  allTimeRuns: Run[] | null;
+  error: string | null;
+  currentUserId: string | null;
+}) {
+  const runs = activeBoard === 'today' ? todayRuns : allTimeRuns;
+  const loading = runs === null && !error;
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
+          Leaderboard
+        </div>
+        <div className="inline-flex gap-1 rounded-full border border-(--color-hairline) bg-white p-0.5">
+          {(['today', 'all-time'] as const).map((b) => (
+            <button
+              key={b}
+              onClick={() => onSwitchBoard(b)}
+              className={
+                'rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] transition-colors duration-150 ' +
+                (activeBoard === b
+                  ? 'bg-(--color-ink) text-white'
+                  : 'text-(--color-muted) hover:text-(--color-body)')
+              }
+            >
+              {b === 'today' ? 'Today' : 'All-time'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error ? (
+        <div className="rounded border border-(--color-error-border) bg-(--color-error-bg) px-3 py-2 text-xs text-(--color-error)">
+          {error}
+        </div>
+      ) : loading ? (
+        <div className="rounded-card border border-(--color-hairline) bg-white px-4 py-6 text-center text-sm text-(--color-muted)">
+          Loading…
+        </div>
+      ) : runs && runs.length === 0 ? (
+        <div className="rounded-card border border-(--color-hairline) bg-white px-4 py-6 text-center text-sm text-(--color-muted)">
+          No runs {activeBoard === 'today' ? 'today yet' : 'on the board yet'} — you're first.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-card border border-(--color-hairline) bg-white">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-(--color-hairline)">
+              <tr className="text-(--color-muted)">
+                <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.08em]">#</th>
+                <th className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.08em]">Name</th>
+                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-[0.08em]">Score</th>
+                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-[0.08em]">Correct</th>
+                <th className="px-3 py-2.5 text-right font-mono text-[10px] uppercase tracking-[0.08em]">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(runs ?? []).map((r, i) => {
+                const isMine = currentUserId !== null && r.user_id === currentUserId;
+                return (
+                  <tr
+                    key={r.id}
+                    className={
+                      'border-b border-(--color-hairline) last:border-0 ' +
+                      (isMine ? 'bg-(--color-amber-soft)/40' : '')
+                    }
+                  >
+                    <td className="px-3 py-2.5 tabular-nums text-(--color-muted)">
+                      {i + 1}
+                    </td>
+                    <td className="px-3 py-2.5 text-(--color-ink)">
+                      {r.nickname}
+                      {isMine && (
+                        <span className="ml-1.5 font-mono text-[9px] uppercase tracking-[0.1em] text-(--color-amber)">
+                          you
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-medium tabular-nums text-(--color-ink)">
+                      {r.score}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-(--color-muted)">
+                      {r.correct_count}/{r.total_rounds}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-[10px] text-(--color-muted)">
+                      {relativeTime(r.finished_at)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
