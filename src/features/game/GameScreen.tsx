@@ -18,7 +18,13 @@ import type { HintType } from '@/types/hint';
 
 type GameScreenProps = { goTo: (s: Screen) => void };
 
-type Feedback = { kind: 'neutral' | 'success' | 'error'; text: string };
+type Feedback = {
+  kind: 'neutral' | 'success' | 'error' | 'reveal';
+  text: string;
+  sub?: string;
+};
+
+type Outcome = 'playing' | 'won' | 'lost';
 
 type Hint = { key: HintType; label: string; cost: number };
 
@@ -110,7 +116,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
   const [streak, setStreak] = useState(() => loadNumber('streak', 0));
   const [round, setRound] = useState(() => loadNumber('round', 0));
   const [seenIds, setSeenIds] = useState<Set<string>>(() => loadStringSet('seen'));
-  const [won, setWon] = useState(false);
+  const [outcome, setOutcome] = useState<Outcome>('playing');
   const [pulse, setPulse] = useState(false);
 
   const pickFigure = useCallback(() => {
@@ -121,7 +127,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
     setGuess('');
     setFeedback(NEUTRAL_FEEDBACK);
     setUsedHints([]);
-    setWon(false);
+    setOutcome('playing');
     setRound((r) => {
       const next = r + 1;
       saveNumber('round', next);
@@ -154,7 +160,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!figure || won) return;
+    if (!figure || outcome !== 'playing') return;
     const trimmed = guess.trim();
     if (!trimmed) return;
     if (matches(trimmed, [figure.name, ...figure.aliases])) {
@@ -165,7 +171,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
       setStreak(nextStreak);
       saveNumber('score', nextScore);
       saveNumber('streak', nextStreak);
-      setWon(true);
+      setOutcome('won');
       setReveal(100);
       setFeedback({
         kind: 'success',
@@ -185,7 +191,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
   };
 
   const useHint = (key: HintType, cost: number) => {
-    if (won || !figure) return;
+    if (outcome !== 'playing' || !figure) return;
     if (usedHints.includes(key)) return;
     setUsedHints((prev) => [...prev, key]);
     const nextScore = Math.max(0, score - cost);
@@ -193,18 +199,22 @@ export function GameScreen({ goTo }: GameScreenProps) {
     saveNumber('score', nextScore);
   };
 
-  const skip = () => {
-    if (!figure) return;
+  const giveUp = () => {
+    if (!figure || outcome !== 'playing') return;
     setStreak(0);
     saveNumber('streak', 0);
+    setOutcome('lost');
+    setReveal(100);
+    const metaParts = [figure.era, figure.field, figure.region].filter(Boolean);
+    setFeedback({
+      kind: 'reveal',
+      text: `It was ${figure.name}.`,
+      sub: metaParts.length > 0 ? metaParts.join(' · ') : undefined,
+    });
     markSeen(figure.id);
-    pickFigure();
   };
 
   const next = () => {
-    if (won && figure) {
-      markSeen(figure.id);
-    }
     pickFigure();
   };
 
@@ -301,7 +311,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
             max={100}
             value={reveal}
             onChange={(e) => setReveal(parseInt(e.target.value, 10))}
-            disabled={won || !figure}
+            disabled={outcome !== 'playing' || !figure}
             aria-label="Reveal amount"
           />
           <span className="min-w-10 text-right text-sm tabular-nums text-(--color-ink)">
@@ -315,12 +325,12 @@ export function GameScreen({ goTo }: GameScreenProps) {
             placeholder="Who is this person?"
             value={guess}
             onChange={(e) => setGuess(e.target.value)}
-            disabled={won || !figure}
+            disabled={outcome !== 'playing' || !figure}
             className="min-h-11 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3.5 text-base text-(--color-ink) transition-colors duration-150 placeholder:text-(--color-muted) hover:border-(--color-hairline-strong) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted)"
           />
           <button
             type="submit"
-            disabled={won || !figure}
+            disabled={outcome !== 'playing' || !figure}
             className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50"
           >
             Guess
@@ -348,7 +358,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
               key={h.key}
               label={h.label}
               used={usedHints.includes(h.key)}
-              disabled={won || !figure}
+              disabled={outcome !== 'playing' || !figure}
               onUse={() => useHint(h.key, h.cost)}
             />
           ))}
@@ -356,20 +366,20 @@ export function GameScreen({ goTo }: GameScreenProps) {
 
         <div className="mt-8 grid grid-cols-2 gap-3">
           <button
-            onClick={skip}
-            disabled={!figure}
-            className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-hairline) bg-transparent px-6 py-3.5 text-sm font-medium text-(--color-body) transition-colors duration-150 hover:bg-black/[0.03] disabled:opacity-50"
+            onClick={giveUp}
+            disabled={outcome !== 'playing' || !figure}
+            className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-hairline) bg-transparent px-6 py-3.5 text-sm font-medium text-(--color-body) transition-colors duration-150 hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Skip
+            Give up
           </button>
           <button
             onClick={next}
-            disabled={!figure}
+            disabled={outcome === 'playing' || !figure}
             className={
-              'inline-flex min-h-11 items-center justify-center rounded-button px-6 py-3.5 text-sm font-medium transition-colors duration-150 disabled:opacity-50 ' +
-              (won
+              'inline-flex min-h-11 items-center justify-center rounded-button px-6 py-3.5 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ' +
+              (outcome !== 'playing'
                 ? 'border border-(--color-amber) bg-(--color-amber) text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-(--color-amber-hover)'
-                : 'border border-(--color-hairline) bg-transparent text-(--color-body) hover:bg-black/[0.03]')
+                : 'border border-(--color-hairline) bg-transparent text-(--color-body)')
             }
           >
             Next figure
@@ -385,15 +395,19 @@ function FeedbackBox({ feedback }: { feedback: Feedback }) {
     neutral: 'border-(--color-hairline) bg-white text-(--color-muted)',
     error: 'border-(--color-error-border) bg-(--color-error-bg) text-(--color-error)',
     success: 'border-(--color-success-border) bg-(--color-success-bg) text-(--color-success)',
+    reveal: 'border-(--color-info-border) bg-(--color-info-bg) text-(--color-info)',
   };
   return (
     <div
       className={
-        'flex min-h-14 items-center rounded-card border px-4.5 py-4 text-sm leading-[1.45] transition-colors duration-200 ' +
+        'flex min-h-14 flex-col justify-center rounded-card border px-4.5 py-4 text-sm leading-[1.45] transition-colors duration-200 ' +
         classes[feedback.kind]
       }
     >
-      {feedback.text}
+      <div>{feedback.text}</div>
+      {feedback.sub && (
+        <div className="mt-1 text-xs opacity-80">{feedback.sub}</div>
+      )}
     </div>
   );
 }
