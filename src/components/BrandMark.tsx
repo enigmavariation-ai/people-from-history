@@ -4,10 +4,8 @@ type BrandMarkProps = {
 };
 
 export function BrandMark({ tone = 'light', onClick }: BrandMarkProps) {
-  const isDark = tone === 'dark';
-  const ringColor = isDark ? 'var(--color-gold)' : 'var(--color-amber)';
-  const textColor = isDark ? 'var(--color-on-navy)' : 'var(--color-ink)';
-  const fromColor = isDark ? 'var(--color-on-navy-muted)' : 'var(--color-muted)';
+  const textColor = tone === 'dark' ? 'var(--color-on-navy)' : 'var(--color-ink)';
+  const fromColor = tone === 'dark' ? 'var(--color-on-navy-muted)' : 'var(--color-muted)';
 
   return (
     <a
@@ -20,12 +18,7 @@ export function BrandMark({ tone = 'light', onClick }: BrandMarkProps) {
       aria-label="People from History"
       style={{ color: textColor }}
     >
-      <span
-        className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-full border bg-transparent"
-        style={{ borderColor: ringColor }}
-      >
-        <BustSilhouette size={28} color={textColor} />
-      </span>
+      <Logo size={44} />
       <span
         className="font-display text-[12.5px] leading-[1.05] font-medium uppercase tracking-[0.18em]"
         style={{ color: textColor }}
@@ -43,13 +36,41 @@ export function BrandMark({ tone = 'light', onClick }: BrandMarkProps) {
   );
 }
 
-function BustSilhouette({ size, color }: { size: number; color: string }) {
+function Logo({ size }: { size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden>
-      <circle cx="14" cy="11" r="5" fill={color} />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      aria-hidden
+      className="flex-shrink-0"
+    >
+      <rect
+        x="9"
+        y="9"
+        width="82"
+        height="82"
+        rx="20"
+        ry="20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="5"
+      />
       <path
-        d="M3.5 26 C 4.5 19 9 16.5 14 16.5 C 19 16.5 23.5 19 24.5 26 Z"
-        fill={color}
+        fill="currentColor"
+        d="M 20 35 Q 24 22 33 21 Q 50 20 67 21 Q 76 22 80 35 L 72 38 Q 60 32 50 32 Q 40 32 28 38 Z"
+      />
+      <path
+        fill="currentColor"
+        d="M 30 38 Q 27 48 30 56 Q 31 60 34 62 Q 32 65 33 68 L 36 68 L 36 56 Q 38 50 42 48 L 40 46 Q 38 42 41 38 Z"
+      />
+      <path
+        fill="currentColor"
+        d="M 42 38 L 60 38 L 62 44 L 66 50 L 66 66 L 36 66 L 36 58 Q 40 50 44 46 L 42 44 Z"
+      />
+      <path
+        fill="currentColor"
+        d="M 30 66 L 30 88 L 78 88 L 78 62 L 70 60 L 66 66 L 36 66 L 34 62 Z"
       />
     </svg>
   );
