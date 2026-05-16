@@ -18,7 +18,7 @@ export function BrandMark({ tone = 'light', onClick }: BrandMarkProps) {
       aria-label="People from History"
       style={{ color: textColor }}
     >
-      <Logo size={72} />
+      <Logo size={44} />
       <span
         className="font-display text-[12.5px] leading-[1.05] font-medium uppercase tracking-[0.18em]"
         style={{ color: textColor }}
