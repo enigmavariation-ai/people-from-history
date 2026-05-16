@@ -1,88 +1,170 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
+import { matches } from '@/lib/matching';
+import { scoreGuess } from '@/lib/scoring';
+import { loadNumber, loadStringSet, saveNumber, saveStringSet } from '@/lib/storage';
+import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
+import type { Difficulty, Figure } from '@/types/figure';
+import type { HintType } from '@/types/hint';
 
-export type GameVariant = 'initial' | 'mid' | 'correct';
-
-type GameScreenProps = {
-  goTo: (s: Screen) => void;
-  variant: GameVariant;
-};
+type GameScreenProps = { goTo: (s: Screen) => void };
 
 type Feedback = { kind: 'neutral' | 'success' | 'error'; text: string };
 
-type HintKey = 'era' | 'field' | 'region' | 'letter';
+type Hint = { key: HintType; label: string; cost: number };
 
-const HINTS: { key: HintKey; label: string; cost: number }[] = [
+const HINTS: Hint[] = [
   { key: 'era', label: 'Era (-5)', cost: 5 },
   { key: 'field', label: 'Field (-10)', cost: 10 },
   { key: 'region', label: 'Region (-10)', cost: 10 },
   { key: 'letter', label: 'Letter (-15)', cost: 15 },
 ];
 
-export function GameScreen({ goTo, variant }: GameScreenProps) {
-  const initialReveal = variant === 'initial' ? 15 : variant === 'mid' ? 42 : 100;
-  const initialGuess = variant === 'mid' ? 'Newton' : '';
-  const initialFeedback: Feedback =
-    variant === 'initial'
-      ? { kind: 'neutral', text: 'Start with a tight crop for max points.' }
-      : variant === 'mid'
-        ? { kind: 'error', text: 'Not quite — try revealing more, or use a hint.' }
-        : { kind: 'success', text: "Correct! That's Albert Einstein. +85 points." };
+const NEUTRAL_FEEDBACK: Feedback = {
+  kind: 'neutral',
+  text: 'Start with a tight crop for max points.',
+};
 
-  const initialUsedHints: HintKey[] =
-    variant === 'mid' || variant === 'correct' ? ['era'] : [];
-  const initialScore = variant === 'correct' ? 85 : 0;
-  const initialStreak = variant === 'correct' ? 1 : 0;
-  const initialDisabled = variant === 'correct';
+const DIFFICULTY_LABEL: Record<Difficulty, string> = {
+  easy: 'Easy',
+  medium: 'Medium',
+  hard: 'Hard',
+};
 
-  const [reveal, setReveal] = useState(initialReveal);
-  const [guess, setGuess] = useState(initialGuess);
-  const [feedback, setFeedback] = useState<Feedback>(initialFeedback);
-  const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
-  const [usedHints, setUsedHints] = useState<HintKey[]>(initialUsedHints);
-  const [score, setScore] = useState(initialScore);
-  const [streak, setStreak] = useState(initialStreak);
-  const [disabled, setDisabled] = useState(initialDisabled);
+function hintValue(figure: Figure, key: HintType): string {
+  switch (key) {
+    case 'era':
+      return figure.era;
+    case 'field':
+      return figure.field;
+    case 'region':
+      return figure.region;
+    case 'letter':
+      return figure.first_letter;
+  }
+}
+
+function hintLabel(key: HintType): string {
+  switch (key) {
+    case 'era':
+      return 'Era';
+    case 'field':
+      return 'Field';
+    case 'region':
+      return 'Region';
+    case 'letter':
+      return 'First letter';
+  }
+}
+
+function pickRandom<T>(pool: T[]): T | null {
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)] ?? null;
+}
+
+function selectNextFigure(
+  pool: Figure[],
+  difficulty: Difficulty,
+  seen: Set<string>,
+  excludeId: string | null,
+): Figure | null {
+  const filteredByDifficulty = pool.filter((f) => f.difficulty === difficulty);
+  // 1: matching difficulty + unseen + not the current one
+  const fresh = filteredByDifficulty.filter((f) => !seen.has(f.id) && f.id !== excludeId);
+  if (fresh.length > 0) return pickRandom(fresh);
+  // 2: matching difficulty, any seen state, just not the current one
+  const sameDiff = filteredByDifficulty.filter((f) => f.id !== excludeId);
+  if (sameDiff.length > 0) return pickRandom(sameDiff);
+  // 3: any figure that isn't the current one
+  const anyOther = pool.filter((f) => f.id !== excludeId);
+  if (anyOther.length > 0) return pickRandom(anyOther);
+  // 4: give up — only one figure in pool
+  return pickRandom(pool);
+}
+
+export function GameScreen({ goTo }: GameScreenProps) {
+  const { figures, loading, error } = useFigures();
+
+  const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [figure, setFigure] = useState<Figure | null>(null);
+  const [reveal, setReveal] = useState(10);
+  const [guess, setGuess] = useState('');
+  const [feedback, setFeedback] = useState<Feedback>(NEUTRAL_FEEDBACK);
+  const [usedHints, setUsedHints] = useState<HintType[]>([]);
+  const [score, setScore] = useState(() => loadNumber('score', 0));
+  const [streak, setStreak] = useState(() => loadNumber('streak', 0));
+  const [round, setRound] = useState(() => loadNumber('round', 0));
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => loadStringSet('seen'));
+  const [won, setWon] = useState(false);
   const [pulse, setPulse] = useState(false);
 
+  const pickFigure = useCallback(() => {
+    const next = selectNextFigure(figures, difficulty, seenIds, figure?.id ?? null);
+    if (!next) return;
+    setFigure(next);
+    setReveal(10);
+    setGuess('');
+    setFeedback(NEUTRAL_FEEDBACK);
+    setUsedHints([]);
+    setWon(false);
+    setRound((r) => {
+      const next = r + 1;
+      saveNumber('round', next);
+      return next;
+    });
+  }, [figures, difficulty, seenIds, figure?.id]);
+
+  // Pick the first figure once data lands.
   useEffect(() => {
-    setReveal(initialReveal);
-    setGuess(initialGuess);
-    setFeedback(initialFeedback);
-    setUsedHints(initialUsedHints);
-    setScore(initialScore);
-    setStreak(initialStreak);
-    setDisabled(initialDisabled);
-    if (variant === 'correct') {
-      setPulse(true);
-      const t = setTimeout(() => setPulse(false), 1300);
-      return () => clearTimeout(t);
+    if (!figure && figures.length > 0) {
+      pickFigure();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variant]);
+  }, [figures]);
+
+  const markSeen = (id: string) => {
+    setSeenIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      // When everyone has been seen, wipe the seen-set so endless really is endless.
+      if (next.size >= figures.length && figures.length > 0) {
+        saveStringSet('seen', new Set());
+        return new Set();
+      }
+      saveStringSet('seen', next);
+      return next;
+    });
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (disabled) return;
-    const g = guess.trim().toLowerCase();
-    if (!g) return;
-    if (g.includes('einstein')) {
-      const earned = Math.max(20, Math.round(100 - reveal * 0.5));
-      setScore((s) => s + earned);
-      setStreak((s) => s + 1);
+    if (!figure || won) return;
+    const trimmed = guess.trim();
+    if (!trimmed) return;
+    if (matches(trimmed, [figure.name, ...figure.aliases])) {
+      const earned = scoreGuess(reveal, usedHints);
+      const nextScore = score + earned;
+      const nextStreak = streak + 1;
+      setScore(nextScore);
+      setStreak(nextStreak);
+      saveNumber('score', nextScore);
+      saveNumber('streak', nextStreak);
+      setWon(true);
       setReveal(100);
-      setDisabled(true);
       setFeedback({
         kind: 'success',
-        text: `Correct! That's Albert Einstein. +${earned} points.`,
+        text: `Correct! That's ${figure.name}. +${earned} points.`,
       });
+      markSeen(figure.id);
       setPulse(true);
       setTimeout(() => setPulse(false), 1300);
     } else {
       setStreak(0);
+      saveNumber('streak', 0);
       setFeedback({
         kind: 'error',
         text: 'Not quite — try revealing more, or use a hint.',
@@ -90,14 +172,36 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
     }
   };
 
-  const useHint = (key: HintKey, cost: number) => {
-    if (disabled) return;
+  const useHint = (key: HintType, cost: number) => {
+    if (won || !figure) return;
     if (usedHints.includes(key)) return;
-    setUsedHints((u) => [...u, key]);
-    setScore((s) => Math.max(0, s - cost));
+    setUsedHints((prev) => [...prev, key]);
+    const nextScore = Math.max(0, score - cost);
+    setScore(nextScore);
+    saveNumber('score', nextScore);
   };
 
-  const showInfoPill = usedHints.includes('era');
+  const skip = () => {
+    if (!figure) return;
+    setStreak(0);
+    saveNumber('streak', 0);
+    markSeen(figure.id);
+    pickFigure();
+  };
+
+  const next = () => {
+    if (won && figure) {
+      markSeen(figure.id);
+    }
+    pickFigure();
+  };
+
+  const activeFigure = figure ?? sampleFigure;
+
+  const headerNumeral = useMemo(
+    () => `№ ${String(round).padStart(3, '0')}`,
+    [round],
+  );
 
   return (
     <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
@@ -117,7 +221,7 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
 
         <header className="mb-6">
           <div className="mb-2.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-            № 142 &nbsp;·&nbsp; 15 . V . 2026
+            {headerNumeral} &nbsp;·&nbsp; Endless
           </div>
           <div
             className="leading-tight"
@@ -133,7 +237,7 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
             <em className="font-normal italic text-(--color-amber)">History</em>
           </div>
           <div className="mt-1.5 text-sm text-(--color-muted)">
-            Round 1 · {difficulty}
+            Round {round || 1} · {DIFFICULTY_LABEL[difficulty]}
           </div>
         </header>
 
@@ -147,11 +251,11 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
             {score}
           </span>{' '}
           · Streak <span className="text-(--color-ink)">{streak}</span> · Round{' '}
-          <span className="text-(--color-ink)">1</span>
+          <span className="text-(--color-ink)">{round || 1}</span>
         </div>
 
         <div className="mb-6 flex gap-2">
-          {(['Easy', 'Medium', 'Hard'] as const).map((d) => {
+          {(['easy', 'medium', 'hard'] as const).map((d) => {
             const active = d === difficulty;
             return (
               <button
@@ -164,18 +268,27 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
                     : 'border-(--color-hairline) bg-transparent text-(--color-muted)')
                 }
               >
-                {d}
+                {DIFFICULTY_LABEL[d]}
               </button>
             );
           })}
         </div>
 
-        <CropStage
-          imageUrl={sampleFigure.image_url}
-          focal={{ x: sampleFigure.focal_x, y: sampleFigure.focal_y }}
-          startSize={sampleFigure.start_size}
-          revealPct={reveal}
-        />
+        {loading && !figure ? (
+          <LoadingPlaceholder />
+        ) : error && !figure ? (
+          <ErrorPlaceholder error={error} />
+        ) : figures.length === 0 ? (
+          <EmptyPlaceholder />
+        ) : (
+          <CropStage
+            key={activeFigure.id}
+            imageUrl={activeFigure.image_url ?? sampleFigure.image_url}
+            focal={{ x: activeFigure.focal_x, y: activeFigure.focal_y }}
+            startSize={activeFigure.start_size}
+            revealPct={reveal}
+          />
+        )}
 
         <div className="flex items-center gap-3 py-4">
           <span className="min-w-14 text-sm text-(--color-muted)">Reveal</span>
@@ -186,7 +299,7 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
             max={100}
             value={reveal}
             onChange={(e) => setReveal(parseInt(e.target.value, 10))}
-            disabled={disabled}
+            disabled={won || !figure}
             aria-label="Reveal amount"
           />
           <span className="min-w-10 text-right text-sm tabular-nums text-(--color-ink)">
@@ -200,12 +313,12 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
             placeholder="Who is this person?"
             value={guess}
             onChange={(e) => setGuess(e.target.value)}
-            disabled={disabled}
+            disabled={won || !figure}
             className="min-h-11 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3.5 text-base text-(--color-ink) transition-colors duration-150 placeholder:text-(--color-muted) hover:border-(--color-hairline-strong) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted)"
           />
           <button
             type="submit"
-            disabled={disabled}
+            disabled={won || !figure}
             className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50"
           >
             Guess
@@ -214,9 +327,16 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
 
         <FeedbackBox feedback={feedback} />
 
-        {showInfoPill && (
-          <div className="pfh-fade mt-3 inline-flex rounded-full border border-(--color-info-border) bg-(--color-info-bg) px-3 py-2 text-[13px] text-(--color-info)">
-            Era: 20th century
+        {usedHints.length > 0 && figure && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {usedHints.map((key) => (
+              <span
+                key={key}
+                className="pfh-fade inline-flex rounded-full border border-(--color-info-border) bg-(--color-info-bg) px-3 py-2 text-[13px] text-(--color-info)"
+              >
+                {hintLabel(key)}: {hintValue(figure, key) || '—'}
+              </span>
+            ))}
           </div>
         )}
 
@@ -226,7 +346,7 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
               key={h.key}
               label={h.label}
               used={usedHints.includes(h.key)}
-              disabled={disabled}
+              disabled={won || !figure}
               onUse={() => useHint(h.key, h.cost)}
             />
           ))}
@@ -234,26 +354,24 @@ export function GameScreen({ goTo, variant }: GameScreenProps) {
 
         <div className="mt-8 grid grid-cols-2 gap-3">
           <button
-            onClick={() => goTo('game-initial')}
-            className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-hairline) bg-transparent px-6 py-3.5 text-sm font-medium text-(--color-body) transition-colors duration-150 hover:bg-black/[0.03]"
+            onClick={skip}
+            disabled={!figure}
+            className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-hairline) bg-transparent px-6 py-3.5 text-sm font-medium text-(--color-body) transition-colors duration-150 hover:bg-black/[0.03] disabled:opacity-50"
           >
             Skip
           </button>
-          {variant === 'correct' ? (
-            <button
-              onClick={() => goTo('game-initial')}
-              className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
-            >
-              Next figure
-            </button>
-          ) : (
-            <button
-              onClick={() => goTo('game-initial')}
-              className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-hairline) bg-transparent px-6 py-3.5 text-sm font-medium text-(--color-body) transition-colors duration-150 hover:bg-black/[0.03]"
-            >
-              Next figure
-            </button>
-          )}
+          <button
+            onClick={next}
+            disabled={!figure}
+            className={
+              'inline-flex min-h-11 items-center justify-center rounded-button px-6 py-3.5 text-sm font-medium transition-colors duration-150 disabled:opacity-50 ' +
+              (won
+                ? 'border border-(--color-amber) bg-(--color-amber) text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-(--color-amber-hover)'
+                : 'border border-(--color-hairline) bg-transparent text-(--color-body) hover:bg-black/[0.03]')
+            }
+          >
+            Next figure
+          </button>
         </div>
       </div>
     </div>
@@ -303,5 +421,37 @@ function HintButton({
     >
       {label}
     </button>
+  );
+}
+
+function LoadingPlaceholder() {
+  return (
+    <div className="relative aspect-square w-full overflow-hidden rounded-card border border-(--color-hairline) bg-(--color-paper) text-center">
+      <div className="absolute inset-0 grid place-items-center text-sm text-(--color-muted)">
+        Loading figures…
+      </div>
+    </div>
+  );
+}
+
+function ErrorPlaceholder({ error }: { error: Error }) {
+  return (
+    <div className="relative aspect-square w-full overflow-hidden rounded-card border border-(--color-error-border) bg-(--color-error-bg) text-center">
+      <div className="absolute inset-0 grid place-items-center px-6 text-sm text-(--color-error)">
+        Couldn't load figures.
+        <br />
+        {error.message}
+      </div>
+    </div>
+  );
+}
+
+function EmptyPlaceholder() {
+  return (
+    <div className="relative aspect-square w-full overflow-hidden rounded-card border border-(--color-hairline) bg-(--color-paper) text-center">
+      <div className="absolute inset-0 grid place-items-center px-6 text-sm text-(--color-muted)">
+        No figures in the database yet. Add one in the Supabase dashboard, then refresh.
+      </div>
+    </div>
   );
 }

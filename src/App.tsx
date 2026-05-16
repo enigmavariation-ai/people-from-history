@@ -21,11 +21,7 @@ function App() {
       <ProtoNav screen={screen} goTo={goTo} />
       <div className="min-h-0 flex-1">
         {screen === 'landing' && <Landing goTo={goTo} />}
-        {screen === 'game-initial' && <GameScreen key="initial" goTo={goTo} variant="initial" />}
-        {screen === 'game-mid' && <GameScreen key="mid" goTo={goTo} variant="mid" />}
-        {screen === 'game-correct' && (
-          <GameScreen key="correct" goTo={goTo} variant="correct" />
-        )}
+        {screen === 'game' && <GameScreen goTo={goTo} />}
         {screen === 'daily' && <DailyResult goTo={goTo} />}
       </div>
     </div>
