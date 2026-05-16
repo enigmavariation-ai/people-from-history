@@ -287,34 +287,15 @@ export type RoundChromeProps = {
 
 export function RoundChrome(props: RoundChromeProps) {
   const {
-    headerNumeral,
-    headerLabel,
-    subtitleLeft,
-    hintsUsedCount,
-    difficulty,
-    onChangeDifficulty,
-    goHome,
     loading,
     error,
     empty,
     figure,
-    reveal,
     visualReveal,
-    onReveal,
     potential,
     score,
     streak,
-    outcome,
     pulse,
-    guess,
-    onGuess,
-    onSubmit,
-    feedback,
-    usedHints,
-    onUseHint,
-    onGiveUp,
-    onNext,
-    footMeta,
     scoreLabel = 'Score',
     streakLabel = 'Streak',
     nextLabel = 'Next figure',
@@ -350,10 +331,311 @@ export function RoundChrome(props: RoundChromeProps) {
   );
 
   return (
-    <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[440px] md:max-w-[1040px]">
+    <>
+      <MobileTree {...props} stageContent={stageContent} />
+      <DesktopTree
+        {...props}
+        scoreLabel={scoreLabel}
+        streakLabel={streakLabel}
+        nextLabel={nextLabel}
+        topInsert={topInsert}
+        stageContent={stageContent}
+      />
+    </>
+  );
+}
+
+// =========================================================================
+// Mobile (≤ md) — no-scroll flex column. Stage takes remaining space;
+// guess input + give-up dock at the bottom; hints compact to pill chips.
+// =========================================================================
+
+function MobileTree(
+  props: RoundChromeProps & { stageContent: React.ReactNode },
+) {
+  const {
+    headerNumeral,
+    headerLabel,
+    difficulty,
+    onChangeDifficulty,
+    goHome,
+    figure,
+    reveal,
+    visualReveal,
+    onReveal,
+    outcome,
+    guess,
+    onGuess,
+    onSubmit,
+    feedback,
+    usedHints,
+    onUseHint,
+    onGiveUp,
+    onNext,
+    footMeta,
+    nextLabel = 'Next figure',
+    topInsert,
+    stageContent,
+  } = props;
+
+  return (
+    <div className="flex h-[calc(100svh-41px)] flex-col bg-(--color-bg) md:hidden">
+      {/* Top bar */}
+      <div className="flex flex-shrink-0 items-center justify-between border-b border-(--color-rule) px-4 py-2.5">
+        <button
+          onClick={goHome}
+          aria-label="Home"
+          className="inline-flex h-9 w-9 items-center justify-center text-(--color-body)"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div className="inline-flex gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
+          <span>{headerNumeral}</span>
+          <span>·</span>
+          <span>{headerLabel}</span>
+        </div>
+        <button
+          onClick={onChangeDifficulty}
+          className="inline-flex items-center gap-1 rounded-full border border-(--color-hairline) bg-white px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-body)"
+        >
+          {DIFFICULTY_LABEL[difficulty]}
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Optional top insert — Challenge progress dots */}
+      {topInsert && (
+        <div className="flex-shrink-0 border-b border-(--color-rule) px-4 py-2">
+          {topInsert}
+        </div>
+      )}
+
+      {/* Stage — fills remaining vertical space */}
+      <div className="flex flex-1 min-h-0 items-center justify-center p-3">
+        <div className="aspect-square h-full max-h-full max-w-full">
+          {stageContent}
+        </div>
+      </div>
+
+      {/* Slider (compact) */}
+      <div className="flex flex-shrink-0 items-center gap-3 px-4">
+        <input
+          type="range"
+          className="pfh-slider flex-1"
+          min={10}
+          max={100}
+          value={visualReveal}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (v > reveal) {
+              onReveal(v);
+            } else {
+              e.currentTarget.value = String(reveal);
+            }
+          }}
+          disabled={outcome !== 'playing' || !figure}
+          aria-label="Reveal amount"
+          style={{ ['--reveal-pct' as string]: `${visualReveal}%` }}
+        />
+        <span
+          className="min-w-10 text-right tabular-nums"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--color-ink)',
+          }}
+        >
+          {visualReveal}%
+        </span>
+      </div>
+
+      {/* Hint chips */}
+      <div className="flex flex-shrink-0 flex-wrap gap-1.5 px-4 py-2.5">
+        {HINTS.map((h) => (
+          <MobileHintChip
+            key={h.key}
+            hint={h}
+            value={hintValue(figure, h.key)}
+            used={usedHints.includes(h.key)}
+            disabled={outcome !== 'playing' || !figure}
+            onUse={() => onUseHint(h.key, h.cost)}
+          />
+        ))}
+      </div>
+
+      {/* Bottom action area */}
+      <div
+        className="flex-shrink-0 border-t border-(--color-rule) bg-white px-4 pt-3"
+        style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+      >
+        {feedback.kind !== 'neutral' && <CompactFeedback feedback={feedback} />}
+
+        <form onSubmit={onSubmit} className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Who is this person?"
+            value={guess}
+            onChange={(e) => onGuess(e.target.value)}
+            disabled={outcome !== 'playing' || !figure}
+            className="min-h-12 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) placeholder:text-(--color-muted) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted)"
+          />
+          <button
+            type="submit"
+            disabled={outcome !== 'playing' || !figure}
+            className="inline-flex min-h-12 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Guess
+          </button>
+        </form>
+
+        <div className="mt-3 flex items-center justify-between gap-2">
+          {outcome === 'playing' ? (
+            <button
+              onClick={onGiveUp}
+              disabled={!figure}
+              className="inline-flex min-h-10 items-center justify-center rounded-button border border-(--color-hairline-strong) bg-transparent px-4 py-2 text-sm font-medium text-(--color-body) disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Give up &amp; reveal
+            </button>
+          ) : (
+            <button
+              onClick={onNext}
+              className="inline-flex min-h-10 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-2 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+            >
+              {nextLabel}
+            </button>
+          )}
+          {footMeta && (
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
+              {footMeta}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileHintChip({
+  hint,
+  value,
+  used,
+  disabled,
+  onUse,
+}: {
+  hint: { key: HintType; name: string; cost: number; icon: string };
+  value: string;
+  used: boolean;
+  disabled: boolean;
+  onUse: () => void;
+}) {
+  return (
+    <button
+      onClick={onUse}
+      disabled={disabled || used}
+      className={
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[12px] transition-colors duration-150 ' +
+        (used
+          ? 'border-(--color-amber) bg-(--color-amber-soft) text-(--color-amber)'
+          : 'border-(--color-hairline) bg-white text-(--color-body)') +
+        (disabled && !used ? ' opacity-50' : '')
+      }
+    >
+      <span
+        className={
+          'inline-grid h-4 w-4 place-items-center rounded text-[9px] font-semibold ' +
+          (used ? 'bg-(--color-amber) text-white' : 'bg-(--color-amber-soft) text-(--color-amber)')
+        }
+      >
+        {hint.icon}
+      </span>
+      {used ? (
+        <span style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic' }}>
+          {value || '—'}
+        </span>
+      ) : (
+        <span className="font-mono text-[10px] text-(--color-muted)">−{hint.cost}</span>
+      )}
+    </button>
+  );
+}
+
+function CompactFeedback({ feedback }: { feedback: Feedback }) {
+  const classes: Record<Feedback['kind'], string> = {
+    neutral: 'border-(--color-hairline) bg-white text-(--color-muted)',
+    error: 'border-(--color-error-border) bg-(--color-error-bg) text-(--color-error)',
+    success: 'border-(--color-success-border) bg-(--color-success-bg) text-(--color-success)',
+    reveal: 'border-(--color-info-border) bg-(--color-info-bg) text-(--color-info)',
+  };
+  return (
+    <div
+      className={
+        'mb-2.5 rounded-button border px-3 py-2 text-xs leading-[1.4] ' + classes[feedback.kind]
+      }
+    >
+      <div>{feedback.text}</div>
+      {feedback.sub && <div className="mt-0.5 opacity-80">{feedback.sub}</div>}
+    </div>
+  );
+}
+
+// =========================================================================
+// Desktop (≥ md) — preserves the two-column dossier from the redesign.
+// =========================================================================
+
+function DesktopTree(
+  props: RoundChromeProps & {
+    stageContent: React.ReactNode;
+    scoreLabel: string;
+    streakLabel: string;
+    nextLabel: string;
+    topInsert: React.ReactNode;
+  },
+) {
+  const {
+    headerNumeral,
+    headerLabel,
+    subtitleLeft,
+    hintsUsedCount,
+    difficulty,
+    onChangeDifficulty,
+    goHome,
+    figure,
+    reveal,
+    visualReveal,
+    onReveal,
+    potential,
+    score,
+    streak,
+    outcome,
+    pulse,
+    guess,
+    onGuess,
+    onSubmit,
+    feedback,
+    usedHints,
+    onUseHint,
+    onGiveUp,
+    onNext,
+    footMeta,
+    scoreLabel,
+    streakLabel,
+    nextLabel,
+    topInsert,
+    stageContent,
+  } = props;
+
+  return (
+    <div className="hidden h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg) md:block">
+      <div className="mx-auto max-w-[1040px]">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-5 pb-3 pt-5 md:px-8 md:pt-6">
+        <div className="flex items-center justify-between px-8 pb-3 pt-6">
           <button
             onClick={goHome}
             className="inline-flex items-center gap-1.5 text-sm text-(--color-body) no-underline"
