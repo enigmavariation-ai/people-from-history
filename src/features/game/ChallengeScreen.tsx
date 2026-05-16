@@ -141,7 +141,9 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
     if (matches(trimmed, [figure.name, ...figure.aliases])) {
       const earned = scoreChallengeRound(reveal, usedHints, tier);
       setOutcome('won');
-      setReveal(100);
+      // Don't call setReveal(100) — that would corrupt the recorded
+      // reveal-at-guess-time. The CropStage + slider visually jump to
+      // 100% via the conditional render below.
       setFeedback({
         kind: 'success',
         text: `Correct! That's ${figure.name}. +${earned} points.`,
@@ -165,7 +167,8 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
   const giveUp = () => {
     if (!figure || outcome !== 'playing') return;
     setOutcome('lost');
-    setReveal(100);
+    // Don't call setReveal(100) — see submit() for why. Visual reveal is
+    // overridden in the render when outcome !== 'playing'.
     const metaParts = [figure.era, figure.field, figure.region].filter(Boolean);
     setFeedback({
       kind: 'reveal',
@@ -238,6 +241,14 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
   const isLastRound = results.length === TOTAL_ROUNDS - 1;
   const activeFigure = figure ?? sampleFigure;
 
+  // Visual reveal: pegged to 100% once the round has resolved so the player
+  // sees the whole image, while the recorded `reveal` state stays at the
+  // value at moment of outcome.
+  const visualReveal = outcome === 'playing' ? reveal : 100;
+  const pendingScore =
+    outcome === 'won' && figure ? scoreChallengeRound(reveal, usedHints, tier) : 0;
+  const runningTotal = results.reduce((s, r) => s + r.finalScore, 0) + pendingScore;
+
   return (
     <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
       <div className="mx-auto max-w-[480px] px-6 pb-24 pt-8">
@@ -281,11 +292,11 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
         <div className="mb-6 border-y border-(--color-hairline) py-3 text-center text-sm tabular-nums text-(--color-muted)">
           Total{' '}
           <span
-            key={`tot-${results.length}-${pulse ? 'p' : 'n'}`}
+            key={`tot-${runningTotal}-${pulse ? 'p' : 'n'}`}
             className={pulse ? 'pfh-pulse' : ''}
             style={{ color: pulse ? 'var(--color-amber)' : 'var(--color-ink)' }}
           >
-            {results.reduce((s, r) => s + r.finalScore, 0)}
+            {runningTotal}
           </span>{' '}
           · Tier streak <span className="text-(--color-ink)">{tierStreak}</span>
         </div>
@@ -302,7 +313,7 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
             imageUrl={activeFigure.image_url ?? sampleFigure.image_url}
             focal={{ x: activeFigure.focal_x, y: activeFigure.focal_y }}
             startSize={activeFigure.start_size}
-            revealPct={reveal}
+            revealPct={visualReveal}
           />
         )}
 
@@ -313,13 +324,13 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
             className="pfh-slider"
             min={10}
             max={100}
-            value={reveal}
+            value={visualReveal}
             onChange={(e) => setReveal(parseInt(e.target.value, 10))}
             disabled={outcome !== 'playing' || !figure}
             aria-label="Reveal amount"
           />
           <span className="min-w-10 text-right text-sm tabular-nums text-(--color-ink)">
-            {reveal}%
+            {visualReveal}%
           </span>
         </div>
 
