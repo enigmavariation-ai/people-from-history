@@ -26,13 +26,11 @@ type Feedback = {
 
 type Outcome = 'playing' | 'won' | 'lost';
 
-type Hint = { key: HintType; label: string; cost: number };
-
-const HINTS: Hint[] = [
-  { key: 'era', label: 'Era (-5)', cost: 5 },
-  { key: 'field', label: 'Field (-10)', cost: 10 },
-  { key: 'region', label: 'Region (-10)', cost: 10 },
-  { key: 'letter', label: 'Letter (-15)', cost: 15 },
+const HINTS: ReadonlyArray<{ key: HintType; name: string; cost: number; icon: string }> = [
+  { key: 'era', name: 'Era', cost: 5, icon: 'E' },
+  { key: 'field', name: 'Field', cost: 10, icon: 'F' },
+  { key: 'region', name: 'Region', cost: 10, icon: 'R' },
+  { key: 'letter', name: 'Initial', cost: 15, icon: 'A' },
 ];
 
 const NEUTRAL_FEEDBACK: Feedback = {
@@ -65,19 +63,6 @@ function hintValue(figure: Figure, key: HintType): string {
   }
 }
 
-function hintLabel(key: HintType): string {
-  switch (key) {
-    case 'era':
-      return 'Era';
-    case 'field':
-      return 'Field';
-    case 'region':
-      return 'Region';
-    case 'letter':
-      return 'First letter';
-  }
-}
-
 function pickRandom<T>(pool: T[]): T | null {
   if (pool.length === 0) return null;
   return pool[Math.floor(Math.random() * pool.length)] ?? null;
@@ -90,16 +75,12 @@ function selectNextFigure(
   excludeId: string | null,
 ): Figure | null {
   const filteredByDifficulty = pool.filter((f) => f.difficulty === difficulty);
-  // 1: matching difficulty + unseen + not the current one
   const fresh = filteredByDifficulty.filter((f) => !seen.has(f.id) && f.id !== excludeId);
   if (fresh.length > 0) return pickRandom(fresh);
-  // 2: matching difficulty, any seen state, just not the current one
   const sameDiff = filteredByDifficulty.filter((f) => f.id !== excludeId);
   if (sameDiff.length > 0) return pickRandom(sameDiff);
-  // 3: any figure that isn't the current one
   const anyOther = pool.filter((f) => f.id !== excludeId);
   if (anyOther.length > 0) return pickRandom(anyOther);
-  // 4: give up — only one figure in pool
   return pickRandom(pool);
 }
 
@@ -129,13 +110,12 @@ export function GameScreen({ goTo }: GameScreenProps) {
     setUsedHints([]);
     setOutcome('playing');
     setRound((r) => {
-      const next = r + 1;
-      saveNumber('round', next);
-      return next;
+      const nextRound = r + 1;
+      saveNumber('round', nextRound);
+      return nextRound;
     });
   }, [figures, difficulty, seenIds, figure?.id]);
 
-  // Pick the first figure once data lands.
   useEffect(() => {
     if (!figure && figures.length > 0) {
       pickFigure();
@@ -148,7 +128,6 @@ export function GameScreen({ goTo }: GameScreenProps) {
       if (prev.has(id)) return prev;
       const next = new Set(prev);
       next.add(id);
-      // When everyone has been seen, wipe the seen-set so endless really is endless.
       if (next.size >= figures.length && figures.length > 0) {
         saveStringSet('seen', new Set());
         return new Set();
@@ -172,7 +151,6 @@ export function GameScreen({ goTo }: GameScreenProps) {
       saveNumber('score', nextScore);
       saveNumber('streak', nextStreak);
       setOutcome('won');
-      setReveal(100);
       setFeedback({
         kind: 'success',
         text: `Correct! That's ${figure.name}. +${earned} points.`,
@@ -204,7 +182,6 @@ export function GameScreen({ goTo }: GameScreenProps) {
     setStreak(0);
     saveNumber('streak', 0);
     setOutcome('lost');
-    setReveal(100);
     const metaParts = [figure.era, figure.field, figure.region].filter(Boolean);
     setFeedback({
       kind: 'reveal',
@@ -219,6 +196,8 @@ export function GameScreen({ goTo }: GameScreenProps) {
   };
 
   const activeFigure = figure ?? sampleFigure;
+  const visualReveal = outcome === 'playing' ? reveal : 100;
+  const potential = scoreGuess(reveal, usedHints);
 
   const headerNumeral = useMemo(
     () => `№ ${String(round).padStart(3, '0')}`,
@@ -226,175 +205,510 @@ export function GameScreen({ goTo }: GameScreenProps) {
   );
 
   return (
+    <RoundChrome
+      mode="practice"
+      headerNumeral={headerNumeral}
+      headerLabel="Practice"
+      subtitleLeft={`Round ${round || 1}`}
+      hintsUsedCount={usedHints.length}
+      difficulty={difficulty}
+      onChangeDifficulty={() => goTo('play-setup')}
+      goHome={() => goTo('landing')}
+      loading={loading && !figure}
+      error={error && !figure ? error : null}
+      empty={!loading && !error && figures.length === 0}
+      figure={activeFigure}
+      reveal={reveal}
+      visualReveal={visualReveal}
+      onReveal={(v) => {
+        if (v > reveal) setReveal(v);
+      }}
+      potential={potential}
+      score={score}
+      streak={streak}
+      outcome={outcome}
+      pulse={pulse}
+      guess={guess}
+      onGuess={setGuess}
+      onSubmit={submit}
+      feedback={feedback}
+      usedHints={usedHints}
+      onUseHint={useHint}
+      onGiveUp={giveUp}
+      onNext={next}
+      footMeta={null}
+    />
+  );
+}
+
+// =========================================================================
+// Round chrome — shared layout for Practice and Challenge. The container is
+// single-column on mobile (≤ md) with stat pills overlaying the stage; on
+// desktop it's a two-column grid (stage left, dossier right) per the
+// PFH Redesign hand-off.
+// =========================================================================
+
+export type RoundChromeProps = {
+  mode: 'practice' | 'challenge';
+  headerNumeral: string;
+  headerLabel: string;
+  subtitleLeft: string;
+  hintsUsedCount: number;
+  difficulty: Difficulty;
+  onChangeDifficulty: () => void;
+  goHome: () => void;
+  loading: boolean;
+  error: Error | null;
+  empty: boolean;
+  figure: Figure;
+  reveal: number;
+  visualReveal: number;
+  onReveal: (v: number) => void;
+  potential: number;
+  score: number;
+  streak: number;
+  outcome: Outcome;
+  pulse: boolean;
+  guess: string;
+  onGuess: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  feedback: Feedback;
+  usedHints: HintType[];
+  onUseHint: (key: HintType, cost: number) => void;
+  onGiveUp: () => void;
+  onNext: () => void;
+  footMeta: string | null;
+  // Mode-specific labels and optional slots
+  scoreLabel?: string;     // defaults "Score" — Challenge uses "Total"
+  streakLabel?: string;    // defaults "Streak" — Challenge uses "Tier streak"
+  nextLabel?: string;      // defaults "Next figure" — Challenge final round uses "See results"
+  topInsert?: React.ReactNode; // optional element rendered below top bar, above body (e.g. ProgressDots)
+};
+
+export function RoundChrome(props: RoundChromeProps) {
+  const {
+    headerNumeral,
+    headerLabel,
+    subtitleLeft,
+    hintsUsedCount,
+    difficulty,
+    onChangeDifficulty,
+    goHome,
+    loading,
+    error,
+    empty,
+    figure,
+    reveal,
+    visualReveal,
+    onReveal,
+    potential,
+    score,
+    streak,
+    outcome,
+    pulse,
+    guess,
+    onGuess,
+    onSubmit,
+    feedback,
+    usedHints,
+    onUseHint,
+    onGiveUp,
+    onNext,
+    footMeta,
+    scoreLabel = 'Score',
+    streakLabel = 'Streak',
+    nextLabel = 'Next figure',
+    topInsert,
+  } = props;
+
+  const stageContent = loading ? (
+    <LoadingPlaceholder />
+  ) : error ? (
+    <ErrorPlaceholder error={error} />
+  ) : empty ? (
+    <EmptyPlaceholder />
+  ) : (
+    <div className="relative">
+      <CropStage
+        key={figure.id}
+        imageUrl={figure.image_url ?? sampleFigure.image_url}
+        focal={{ x: figure.focal_x, y: figure.focal_y }}
+        startSize={figure.start_size}
+        revealPct={visualReveal}
+      />
+      {/* Mobile-only pill overlays */}
+      <div className="absolute left-3 top-3 md:hidden">
+        <PillStat label="Revealed" value={`${visualReveal}%`} />
+      </div>
+      <div className="absolute right-3 top-3 md:hidden">
+        <PillStat label="Potential" value={String(potential)} tone="ink" />
+      </div>
+      <div className="absolute bottom-3 left-3 md:hidden">
+        <PillStat label={scoreLabel} value={String(score)} tone="amber" extra={`· ${streakLabel} ${streak}`} pulse={pulse} />
+      </div>
+    </div>
+  );
+
+  return (
     <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[480px] px-6 pb-24 pt-8">
-        <div className="mb-7">
-          <a
-            href="#home"
-            onClick={(e) => {
-              e.preventDefault();
-              goTo('landing');
-            }}
-            className="text-sm text-(--color-muted) no-underline"
+      <div className="mx-auto max-w-[440px] md:max-w-[1040px]">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-5 pb-3 pt-5 md:px-8 md:pt-6">
+          <button
+            onClick={goHome}
+            className="inline-flex items-center gap-1.5 text-sm text-(--color-body) no-underline"
           >
-            ← Home
-          </a>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Home
+          </button>
+          <div className="inline-flex gap-3.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
+            <span>{headerNumeral}</span>
+            <span className="hidden md:inline">·</span>
+            <span>{headerLabel}</span>
+          </div>
+          <button
+            onClick={onChangeDifficulty}
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-body) hover:text-(--color-ink)"
+          >
+            {DIFFICULTY_LABEL[difficulty]}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
         </div>
 
-        <header className="mb-6">
-          <div className="mb-2.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-            {headerNumeral} &nbsp;·&nbsp; Practice
-          </div>
-          <div
-            className="leading-tight"
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 28,
-              fontWeight: 500,
-              color: 'var(--color-ink)',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            People from{' '}
-            <em className="font-normal italic text-(--color-amber)">History</em>
-          </div>
-          <div className="mt-1.5 flex items-baseline gap-2 text-sm text-(--color-muted)">
-            <span>Round {round || 1} · {DIFFICULTY_LABEL[difficulty]}</span>
-            <a
-              href="#change"
-              onClick={(e) => {
-                e.preventDefault();
-                goTo('play-setup');
+        <div className="border-t border-(--color-rule)" />
+
+        {topInsert && <div className="px-5 pt-4 md:px-8">{topInsert}</div>}
+
+        {/* Body grid */}
+        <div className="md:grid md:grid-cols-[1.25fr_1fr] md:gap-0">
+          {/* Left zone: title + stage + slider */}
+          <div className="px-5 pb-2 pt-5 md:border-r md:border-(--color-rule) md:px-8 md:pb-7 md:pt-7">
+            <h2
+              className="leading-tight"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 30,
+                fontWeight: 500,
+                color: 'var(--color-ink)',
+                letterSpacing: '-0.015em',
               }}
-              className="text-xs text-(--color-amber) no-underline hover:underline"
             >
-              change
-            </a>
-          </div>
-        </header>
+              People from{' '}
+              <em className="font-normal italic text-(--color-amber)">History</em>
+            </h2>
+            <div className="mt-1.5 text-sm text-(--color-muted)">
+              <span className="font-medium text-(--color-ink)">{subtitleLeft}</span>
+              {' · '}
+              {hintsUsedCount === 0 ? 'No hints used' : `${hintsUsedCount} hint${hintsUsedCount === 1 ? '' : 's'} used`}
+            </div>
 
-        <div className="mb-6 border-y border-(--color-hairline) py-3 text-center text-sm tabular-nums text-(--color-muted)">
-          Score{' '}
-          <span
-            key={`score-${score}-${pulse ? 'p' : 'n'}`}
-            className={pulse ? 'pfh-pulse' : ''}
-            style={{ color: pulse ? 'var(--color-amber)' : 'var(--color-ink)' }}
-          >
-            {score}
-          </span>{' '}
-          · Streak <span className="text-(--color-ink)">{streak}</span> · Round{' '}
-          <span className="text-(--color-ink)">{round || 1}</span>
-        </div>
+            <div className="mt-5">{stageContent}</div>
 
-        {loading && !figure ? (
-          <LoadingPlaceholder />
-        ) : error && !figure ? (
-          <ErrorPlaceholder error={error} />
-        ) : figures.length === 0 ? (
-          <EmptyPlaceholder />
-        ) : (
-          <CropStage
-            key={activeFigure.id}
-            imageUrl={activeFigure.image_url ?? sampleFigure.image_url}
-            focal={{ x: activeFigure.focal_x, y: activeFigure.focal_y }}
-            startSize={activeFigure.start_size}
-            revealPct={reveal}
-          />
-        )}
-
-        <div className="flex items-center gap-3 py-4">
-          <span className="min-w-14 text-sm text-(--color-muted)">Reveal</span>
-          <input
-            type="range"
-            className="pfh-slider"
-            min={10}
-            max={100}
-            value={reveal}
-            onChange={(e) => {
-              const v = parseInt(e.target.value, 10);
-              if (v > reveal) {
-                setReveal(v);
-              } else {
-                // Monotonic: snap the DOM thumb back so the slider only
-                // ratchets forward — see ChallengeScreen for context.
-                e.currentTarget.value = String(reveal);
-              }
-            }}
-            disabled={outcome !== 'playing' || !figure}
-            aria-label="Reveal amount"
-          />
-          <span className="min-w-10 text-right text-sm tabular-nums text-(--color-ink)">
-            {reveal}%
-          </span>
-        </div>
-
-        <form onSubmit={submit} className="mb-4 flex gap-2">
-          <input
-            type="text"
-            placeholder="Who is this person?"
-            value={guess}
-            onChange={(e) => setGuess(e.target.value)}
-            disabled={outcome !== 'playing' || !figure}
-            className="min-h-11 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3.5 text-base text-(--color-ink) transition-colors duration-150 placeholder:text-(--color-muted) hover:border-(--color-hairline-strong) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted)"
-          />
-          <button
-            type="submit"
-            disabled={outcome !== 'playing' || !figure}
-            className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Guess
-          </button>
-        </form>
-
-        <FeedbackBox feedback={feedback} />
-
-        {usedHints.length > 0 && figure && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {usedHints.map((key) => (
+            <div className="mt-5 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+              <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">Reveal</span>
+              <input
+                type="range"
+                className="pfh-slider"
+                min={10}
+                max={100}
+                value={visualReveal}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (v > reveal) {
+                    onReveal(v);
+                  } else {
+                    e.currentTarget.value = String(reveal);
+                  }
+                }}
+                disabled={outcome !== 'playing' || !figure}
+                aria-label="Reveal amount"
+                style={{ ['--reveal-pct' as string]: `${visualReveal}%` }}
+              />
               <span
-                key={key}
-                className="pfh-fade inline-flex rounded-full border border-(--color-info-border) bg-(--color-info-bg) px-3 py-2 text-[13px] text-(--color-info)"
+                className="min-w-12 text-right tabular-nums"
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: 'var(--color-ink)',
+                }}
               >
-                {hintLabel(key)}: {hintValue(figure, key) || '—'}
+                {visualReveal}%
               </span>
-            ))}
+            </div>
+            <div className="mt-2 text-xs text-(--color-muted)">
+              Drag to see more. <span className="text-(--color-ink)">Each +1% costs 1 point</span> from your potential.
+            </div>
           </div>
-        )}
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          {HINTS.map((h) => (
-            <HintButton
-              key={h.key}
-              label={h.label}
-              used={usedHints.includes(h.key)}
-              disabled={outcome !== 'playing' || !figure}
-              onUse={() => useHint(h.key, h.cost)}
-            />
-          ))}
-        </div>
+          {/* Right zone: dossier */}
+          <div className="px-5 pb-7 pt-5 md:bg-(--color-paper) md:px-8 md:pt-7">
+            {/* Desktop-only stats grid */}
+            <div className="hidden md:block">
+              <DossierHeader first>This round</DossierHeader>
+              <div className="mb-6 grid grid-cols-3 gap-2.5">
+                <StatTile label="Potential" value={`${potential}`} sub="/100" featured />
+                <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
+                <StatTile label={streakLabel} value={`${streak}`} />
+              </div>
+            </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-3">
-          <button
-            onClick={giveUp}
-            disabled={outcome !== 'playing' || !figure}
-            className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-hairline) bg-transparent px-6 py-3.5 text-sm font-medium text-(--color-body) transition-colors duration-150 hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Give up
-          </button>
-          <button
-            onClick={next}
-            disabled={outcome === 'playing' || !figure}
-            className={
-              'inline-flex min-h-11 items-center justify-center rounded-button px-6 py-3.5 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ' +
-              (outcome !== 'playing'
-                ? 'border border-(--color-amber) bg-(--color-amber) text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-(--color-amber-hover)'
-                : 'border border-(--color-hairline) bg-transparent text-(--color-body)')
-            }
-          >
-            Next figure
-          </button>
+            <DossierHeader className="hidden md:block">Your guess</DossierHeader>
+            <form onSubmit={onSubmit} className="mb-4 flex gap-2">
+              <input
+                type="text"
+                placeholder="Who is this person?"
+                value={guess}
+                onChange={(e) => onGuess(e.target.value)}
+                disabled={outcome !== 'playing' || !figure}
+                className="min-h-12 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) transition-colors duration-150 placeholder:text-(--color-muted) hover:border-(--color-hairline-strong) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted) md:min-h-11"
+              />
+              <button
+                type="submit"
+                disabled={outcome !== 'playing' || !figure}
+                className="inline-flex min-h-12 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50 md:min-h-11"
+              >
+                Guess
+              </button>
+            </form>
+
+            <FeedbackBox feedback={feedback} />
+
+            <div className="mt-5 md:mt-6">
+              <div className="mb-2 flex items-baseline justify-between">
+                <DossierHeader className="!m-0">Hints</DossierHeader>
+                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
+                  tap to unlock
+                </span>
+              </div>
+              <HintsArea
+                figure={figure}
+                usedHints={usedHints}
+                disabled={outcome !== 'playing' || !figure}
+                onUse={onUseHint}
+              />
+            </div>
+
+            <div className="mt-6 flex items-center justify-between border-t border-(--color-rule) pt-4 md:mt-7">
+              {outcome === 'playing' ? (
+                <button
+                  onClick={onGiveUp}
+                  disabled={!figure}
+                  className="text-sm text-(--color-muted) hover:text-(--color-body) disabled:opacity-50"
+                >
+                  Give up &amp; reveal
+                </button>
+              ) : (
+                <button
+                  onClick={onNext}
+                  className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-2.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
+                >
+                  {nextLabel}
+                </button>
+              )}
+              {footMeta && (
+                <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
+                  {footMeta}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ====== Subcomponents ======================================================
+
+function PillStat({
+  label,
+  value,
+  tone,
+  extra,
+  pulse,
+}: {
+  label: string;
+  value: string;
+  tone?: 'plain' | 'ink' | 'amber';
+  extra?: string;
+  pulse?: boolean;
+}) {
+  const palette =
+    tone === 'ink'
+      ? 'bg-(--color-ink)/95 text-white border-(--color-ink)'
+      : tone === 'amber'
+        ? 'bg-(--color-amber-soft)/95 border-(--color-amber-soft-2) text-[#6B4D14]'
+        : 'bg-white/95 border-(--color-hairline) text-(--color-body)';
+  const labelTone =
+    tone === 'ink'
+      ? 'text-white/55'
+      : tone === 'amber'
+        ? 'text-[#8B6519]'
+        : 'text-(--color-muted)';
+  return (
+    <span
+      className={
+        'inline-flex items-baseline gap-1.5 rounded-full border px-3 py-1.5 text-xs backdrop-blur-sm ' +
+        palette
+      }
+    >
+      <span className={'font-mono text-[10px] uppercase tracking-[0.08em] ' + labelTone}>
+        {label}
+      </span>
+      <b
+        className={pulse ? 'pfh-pulse' : ''}
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 14,
+          fontWeight: 600,
+        }}
+      >
+        {value}
+      </b>
+      {extra && <span className={'text-[10px] ' + labelTone}>{extra}</span>}
+    </span>
+  );
+}
+
+function DossierHeader({
+  children,
+  first,
+  className,
+}: {
+  children: React.ReactNode;
+  first?: boolean;
+  className?: string;
+}) {
+  return (
+    <h3
+      className={
+        'font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-muted) ' +
+        (first ? 'mb-2.5' : 'mb-2.5 mt-6') +
+        (className ? ' ' + className : '')
+      }
+    >
+      {children}
+    </h3>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  sub,
+  featured,
+  pulse,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  featured?: boolean;
+  pulse?: boolean;
+}) {
+  return (
+    <div
+      className={
+        'rounded-card border px-3.5 py-3 ' +
+        (featured
+          ? 'border-(--color-ink) bg-(--color-ink) text-white'
+          : 'border-(--color-hairline) bg-white')
+      }
+    >
+      <div
+        className={
+          'font-mono text-[10px] uppercase tracking-[0.1em] ' +
+          (featured ? 'text-white/60' : 'text-(--color-muted)')
+        }
+      >
+        {label}
+      </div>
+      <div
+        className={'mt-0.5 leading-tight ' + (pulse && !featured ? 'pfh-pulse' : '')}
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 24,
+          fontWeight: 600,
+          color: featured ? '#fff' : (pulse ? 'var(--color-amber)' : 'var(--color-ink)'),
+        }}
+      >
+        {value}
+        {sub && (
+          <span
+            className={'ml-0.5 text-base font-normal ' + (featured ? 'text-white/45' : 'text-(--color-muted)')}
+          >
+            {sub}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HintsArea({
+  figure,
+  usedHints,
+  disabled,
+  onUse,
+}: {
+  figure: Figure;
+  usedHints: HintType[];
+  disabled: boolean;
+  onUse: (key: HintType, cost: number) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
+      {HINTS.map((h) => {
+        const used = usedHints.includes(h.key);
+        const value = hintValue(figure, h.key);
+        return (
+          <button
+            key={h.key}
+            onClick={() => onUse(h.key, h.cost)}
+            disabled={disabled || used}
+            className={
+              'group flex w-full items-start gap-3 rounded-card border px-3 py-2.5 text-left transition-colors duration-150 ' +
+              (used
+                ? 'border-transparent bg-(--color-paper-2) cursor-default'
+                : 'border-(--color-hairline) bg-white hover:border-(--color-hairline-strong) ' +
+                  (disabled ? ' opacity-50 cursor-not-allowed' : ''))
+            }
+          >
+            <span
+              className={
+                'grid h-6 w-6 flex-shrink-0 place-items-center rounded text-xs font-semibold ' +
+                (used
+                  ? 'bg-(--color-ink) text-white'
+                  : 'bg-(--color-amber-soft) text-(--color-amber)')
+              }
+            >
+              {h.icon}
+            </span>
+            <span className="flex-1">
+              <span className="block text-[13px] font-medium text-(--color-ink)">
+                {h.name}
+              </span>
+              {used ? (
+                <span
+                  className="mt-0.5 block text-sm italic"
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--color-ink)' }}
+                >
+                  {value || '—'}
+                </span>
+              ) : (
+                <span className="mt-0.5 block font-mono text-[10px] tracking-[0.04em] text-(--color-muted)">
+                  −{h.cost} pts
+                </span>
+              )}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -409,43 +723,13 @@ function FeedbackBox({ feedback }: { feedback: Feedback }) {
   return (
     <div
       className={
-        'flex min-h-14 flex-col justify-center rounded-card border px-4.5 py-4 text-sm leading-[1.45] transition-colors duration-200 ' +
+        'flex min-h-12 flex-col justify-center rounded-card border px-4 py-3 text-sm leading-[1.45] transition-colors duration-200 ' +
         classes[feedback.kind]
       }
     >
       <div>{feedback.text}</div>
-      {feedback.sub && (
-        <div className="mt-1 text-xs opacity-80">{feedback.sub}</div>
-      )}
+      {feedback.sub && <div className="mt-1 text-xs opacity-80">{feedback.sub}</div>}
     </div>
-  );
-}
-
-function HintButton({
-  label,
-  used,
-  disabled,
-  onUse,
-}: {
-  label: string;
-  used: boolean;
-  disabled: boolean;
-  onUse: () => void;
-}) {
-  return (
-    <button
-      onClick={onUse}
-      disabled={disabled || used}
-      className={
-        'rounded-full border px-3.5 py-2 text-xs font-medium transition-colors duration-150 ' +
-        (used
-          ? 'border-(--color-amber) bg-(--color-amber-soft) text-(--color-amber) cursor-default'
-          : 'border-(--color-hairline) bg-transparent text-(--color-muted)') +
-        (disabled && !used ? ' opacity-50' : '')
-      }
-    >
-      {label}
-    </button>
   );
 }
 

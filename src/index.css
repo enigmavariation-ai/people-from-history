@@ -86,7 +86,10 @@
   }
 }
 
-/* Reveal slider — used in landing demo and game screen. */
+/* Reveal slider — used in landing demo and game screen.
+   Track is a CSS-variable-driven gradient: amber→gold fill from 0 to the
+   current reveal %, then a faint ink track for the unrevealed portion.
+   Set --reveal-pct on the input element (e.g. style={{"--reveal-pct": "42%"}}). */
 input[type="range"].pfh-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -97,14 +100,26 @@ input[type="range"].pfh-slider {
   cursor: pointer;
 }
 input[type="range"].pfh-slider::-webkit-slider-runnable-track {
-  height: 4px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
+  height: 6px;
+  background: linear-gradient(
+    to right,
+    var(--color-amber) 0%,
+    var(--color-gold) var(--reveal-pct, 0%),
+    rgba(22, 22, 22, 0.08) var(--reveal-pct, 0%),
+    rgba(22, 22, 22, 0.08) 100%
+  );
+  border-radius: 3px;
 }
 input[type="range"].pfh-slider::-moz-range-track {
-  height: 4px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
+  height: 6px;
+  background: linear-gradient(
+    to right,
+    var(--color-amber) 0%,
+    var(--color-gold) var(--reveal-pct, 0%),
+    rgba(22, 22, 22, 0.08) var(--reveal-pct, 0%),
+    rgba(22, 22, 22, 0.08) 100%
+  );
+  border-radius: 3px;
 }
 input[type="range"].pfh-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -115,7 +130,7 @@ input[type="range"].pfh-slider::-webkit-slider-thumb {
   background: var(--color-amber);
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
-  margin-top: -7px;
+  margin-top: -6px;
   transition: background 150ms ease;
 }
 input[type="range"].pfh-slider::-moz-range-thumb {
