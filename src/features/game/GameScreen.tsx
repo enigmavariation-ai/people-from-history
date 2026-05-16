@@ -310,7 +310,16 @@ export function GameScreen({ goTo }: GameScreenProps) {
             min={10}
             max={100}
             value={reveal}
-            onChange={(e) => setReveal(parseInt(e.target.value, 10))}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (v > reveal) {
+                setReveal(v);
+              } else {
+                // Monotonic: snap the DOM thumb back so the slider only
+                // ratchets forward — see ChallengeScreen for context.
+                e.currentTarget.value = String(reveal);
+              }
+            }}
             disabled={outcome !== 'playing' || !figure}
             aria-label="Reveal amount"
           />

@@ -325,7 +325,17 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
             min={10}
             max={100}
             value={visualReveal}
-            onChange={(e) => setReveal(parseInt(e.target.value, 10))}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (v > reveal) {
+                setReveal(v);
+              } else {
+                // Monotonic: snap the DOM thumb back so the slider only
+                // ratchets forward. Stops the "drag to 100, peek, drag
+                // back to 10, guess for max points" cheat.
+                e.currentTarget.value = String(reveal);
+              }
+            }}
             disabled={outcome !== 'playing' || !figure}
             aria-label="Reveal amount"
           />
