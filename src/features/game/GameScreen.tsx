@@ -672,10 +672,11 @@ function DesktopTree(
 
         {/* Body grid */}
         <div className="grid flex-1 min-h-0 grid-cols-[1.25fr_1fr] gap-0">
-          {/* Left zone: title + stage + slider */}
-          <div className="flex min-h-0 flex-col overflow-hidden border-r border-(--color-rule) px-8 pb-7 pt-7">
+          {/* Left zone: title + stage + slider, as a 5-row grid so the stage
+              row picks up the remaining height (1fr) without hardcoded calc. */}
+          <div className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] overflow-hidden border-r border-(--color-rule) px-8 pb-7 pt-7">
             <h2
-              className="flex-shrink-0 leading-tight"
+              className="leading-tight"
               style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: 28,
@@ -687,23 +688,28 @@ function DesktopTree(
               People from{' '}
               <em className="font-normal italic text-(--color-amber)">History</em>
             </h2>
-            <div className="flex-shrink-0 mt-1.5 text-sm text-(--color-muted)">
+            <div className="mt-1.5 text-sm text-(--color-muted)">
               <span className="font-medium text-(--color-ink)">{subtitleLeft}</span>
               {' · '}
               {hintsUsedCount === 0 ? 'No hints used' : `${hintsUsedCount} hint${hintsUsedCount === 1 ? '' : 's'} used`}
             </div>
 
-            {/* Stage — square, sized to fit available row height */}
-            <div className="mt-4 flex flex-1 min-h-0 items-center justify-center">
+            {/* Stage cell — flex-1 row. The container-type: size lets the inner
+                box use 100cqw / 100cqh to size itself to the smaller dimension
+                of this cell, so the square always fits no matter the viewport. */}
+            <div
+              className="mt-4 grid min-h-0 place-items-center"
+              style={{ containerType: 'size' }}
+            >
               <div
                 className="aspect-square"
-                style={{ width: 'min(100%, calc(100vh - 340px))' }}
+                style={{ width: 'min(100cqw, 100cqh)' }}
               >
                 {stageContent}
               </div>
             </div>
 
-            <div className="mt-4 flex-shrink-0 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+            <div className="mt-4 grid grid-cols-[auto_1fr_auto] items-center gap-3">
               <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">Reveal</span>
               <input
                 type="range"
@@ -735,7 +741,7 @@ function DesktopTree(
                 {visualReveal}%
               </span>
             </div>
-            <div className="flex-shrink-0 mt-2 text-xs text-(--color-muted)">
+            <div className="mt-2 text-xs text-(--color-muted)">
               Drag to see more. <span className="text-(--color-ink)">Each +1% costs 1 point</span> from your potential.
             </div>
           </div>
