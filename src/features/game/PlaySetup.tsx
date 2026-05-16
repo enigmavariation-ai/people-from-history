@@ -5,7 +5,7 @@ import type { Difficulty } from '@/types/figure';
 
 type PlaySetupProps = { goTo: (s: Screen) => void };
 
-const DIFFICULTIES: ReadonlyArray<{
+const PRACTICE_DIFFICULTIES: ReadonlyArray<{
   key: Difficulty;
   label: string;
   blurb: string;
@@ -43,9 +43,13 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
     hard: figures.filter((f) => f.difficulty === 'hard').length,
   };
 
-  const start = (d: Difficulty) => {
+  const startPractice = (d: Difficulty) => {
     saveString('difficulty', d);
     goTo('game');
+  };
+
+  const startChallenge = () => {
+    goTo('challenge');
   };
 
   return (
@@ -65,7 +69,7 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
         </div>
 
         <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-          § Endless mode
+          § Today
         </div>
         <h1
           className="mb-3"
@@ -79,20 +83,64 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
           }}
         >
           Choose your{' '}
-          <em className="font-normal italic text-(--color-amber)">challenge</em>.
+          <em className="font-normal italic text-(--color-amber)">mode</em>.
         </h1>
         <p className="mb-10 text-lg leading-normal text-(--color-muted)">
-          Pick a difficulty for this session. You can come back and change it any time.
+          One competitive run, or open-ended practice at a tier of your choosing.
+        </p>
+
+        {/* Featured: Challenge */}
+        <button
+          onClick={startChallenge}
+          className="group mb-10 flex w-full items-start gap-5 rounded-card border-2 border-(--color-amber) bg-(--color-amber-soft)/30 px-6 py-7 text-left transition-colors duration-150 hover:bg-(--color-amber-soft)/50"
+        >
+          <span className="font-display text-4xl italic leading-none text-(--color-amber)">
+            01
+          </span>
+          <span className="flex-1">
+            <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-amber)">
+              Featured
+            </div>
+            <div
+              className="mb-2"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 26,
+                fontWeight: 500,
+                color: 'var(--color-ink)',
+                letterSpacing: '-0.01em',
+                lineHeight: 1.1,
+              }}
+            >
+              10-figure challenge
+            </div>
+            <div className="text-sm leading-snug text-(--color-body)">
+              The competitive run. Starts easy and climbs as you answer correctly. One score per run, posted to the leaderboard.
+            </div>
+            <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
+              10 rounds · adaptive · today + all-time leaderboards
+            </div>
+          </span>
+          <span className="self-center font-display text-base italic text-(--color-amber) opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            start →
+          </span>
+        </button>
+
+        <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
+          § Practice
+        </div>
+        <p className="mb-5 text-sm text-(--color-muted)">
+          Open-ended rounds at a fixed difficulty. No leaderboard — your own score keeps building.
         </p>
 
         <div className="flex flex-col gap-3">
-          {DIFFICULTIES.map((d, i) => {
+          {PRACTICE_DIFFICULTIES.map((d) => {
             const count = counts[d.key];
             const selected = d.key === current;
             return (
               <button
                 key={d.key}
-                onClick={() => start(d.key)}
+                onClick={() => startPractice(d.key)}
                 className={
                   'group flex items-start gap-5 rounded-card border bg-white px-6 py-5 text-left transition-colors duration-150 ' +
                   (selected
@@ -100,15 +148,12 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
                     : 'border-(--color-hairline) hover:border-(--color-hairline-strong) hover:bg-(--color-paper)')
                 }
               >
-                <span className="font-display text-3xl italic leading-none text-(--color-amber)">
-                  0{i + 1}
-                </span>
                 <span className="flex-1">
                   <span className="block font-display text-xl font-medium text-(--color-ink)">
                     {d.label}
                     {selected && (
                       <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-amber)">
-                        current
+                        last used
                       </span>
                     )}
                   </span>

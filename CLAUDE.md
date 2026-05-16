@@ -12,12 +12,17 @@ A single historical portrait is shown with most of it hidden. Only a small recta
 
 ## Game modes (build in this order)
 
-1. **Single-player endless** — pick difficulty, get random figures, guess as many as you can
-2. **Daily challenge** — one figure per day, same for everyone, Wordle-style shareable result
-3. **Async multiplayer** — challenge a friend via shared URL, they play the same 5 figures
-4. **Real-time multiplayer** — live race in a room, timer auto-advances the reveal, first correct gets a bonus
+1. **10-figure challenge** — the primary competitive mode. Adaptive difficulty: starts on Easy, climbs a tier after 2 consecutive correct (per-streak bump). Wrong answer / give-up resets the streak; tier never drops. Hard caps the climb. Score = sum of per-round scores with a difficulty multiplier (Easy ×1, Medium ×1.5, Hard ×2). One score per run, posted to the leaderboard.
+2. **Practice (Easy / Medium / Hard)** — open-ended single-player practice at a fixed difficulty. Mechanics identical to the old "endless" mode (round → reveal → guess → score, repeating). No leaderboard; cumulative score persists locally in `localStorage`. No difficulty multiplier — flat `scoreGuess` so personal-best comparisons stay fair.
+3. **Daily challenge** — one figure per day, same for everyone, Wordle-style shareable result. Open questions: one attempt vs unlimited tries; share-grid semantics (reveal % buckets vs attempt count).
+4. **Async multiplayer** — challenge a friend via shared URL, they play the same 5 figures.
+5. **Real-time multiplayer** — live race in a room, timer auto-advances the reveal, first correct gets a bonus.
 
-Do not start on multiplayer until single-player and daily are solid.
+Build order: ✅ Practice (was endless) → 🚧 Challenge core loop (in progress) → 🚧 Leaderboard (next) → Daily → Async multiplayer → Real-time multiplayer. Do not start on async/real-time multiplayer until challenge + leaderboard + daily are solid.
+
+### Leaderboard scope (challenge mode only)
+
+The 10-figure challenge writes runs to a `runs` Supabase table on completion. Two views: top-10 today, top-10 all-time. Anonymous-by-default — nickname is a plain text input on the end screen, no auth. No login until CLAUDE.md says so.
 
 ## Tech stack
 
@@ -187,7 +192,7 @@ For each figure, I (the human) source the image and tag the focal point manually
 ## Out of scope (do not build until I ask)
 
 - User accounts and login (single-player works fine with localStorage)
-- Leaderboards
+- ~~Leaderboards~~ → now in scope, but only for the 10-figure challenge mode, anonymous (nickname + score, no auth). See "Game modes" above. Endless practice stays leaderboard-free.
 - Themed packs / paid content
 - Mobile app (web only for now)
 - Analytics integration

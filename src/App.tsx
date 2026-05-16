@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 import { ProtoNav, type Screen } from '@/components/ProtoNav';
 import { DailyResult } from '@/features/daily/DailyResult';
+import { ChallengeEndScreen } from '@/features/game/ChallengeEndScreen';
+import { ChallengeScreen } from '@/features/game/ChallengeScreen';
 import { GameScreen } from '@/features/game/GameScreen';
 import { PlaySetup } from '@/features/game/PlaySetup';
 import { Landing } from '@/features/landing/Landing';
@@ -24,6 +26,8 @@ function App() {
         {screen === 'landing' && <Landing goTo={goTo} />}
         {screen === 'play-setup' && <PlaySetup goTo={goTo} />}
         {screen === 'game' && <GameScreen goTo={goTo} />}
+        {screen === 'challenge' && <ChallengeScreen key="challenge" goTo={goTo} />}
+        {screen === 'challenge-end' && <ChallengeEndScreen goTo={goTo} />}
         {screen === 'daily' && <DailyResult goTo={goTo} />}
       </div>
     </div>

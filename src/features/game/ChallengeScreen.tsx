@@ -1,22 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
 import { matches } from '@/lib/matching';
-import { scoreGuess } from '@/lib/scoring';
-import {
-  loadNumber,
-  loadString,
-  loadStringSet,
-  saveNumber,
-  saveStringSet,
-} from '@/lib/storage';
+import { scoreChallengeRound } from '@/lib/scoring';
+import { saveString } from '@/lib/storage';
 import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
 import type { Difficulty, Figure } from '@/types/figure';
 import type { HintType } from '@/types/hint';
 
-type GameScreenProps = { goTo: (s: Screen) => void };
+type ChallengeScreenProps = { goTo: (s: Screen) => void };
 
 type Feedback = {
   kind: 'neutral' | 'success' | 'error' | 'reveal';
@@ -25,6 +19,16 @@ type Feedback = {
 };
 
 type Outcome = 'playing' | 'won' | 'lost';
+
+export type RoundResult = {
+  figureId: string;
+  figureName: string;
+  difficulty: Difficulty;
+  outcome: 'won' | 'lost';
+  reveal: number;
+  hintsUsed: HintType[];
+  finalScore: number;
+};
 
 type Hint = { key: HintType; label: string; cost: number };
 
@@ -40,16 +44,19 @@ const NEUTRAL_FEEDBACK: Feedback = {
   text: 'Start with a tight crop for max points.',
 };
 
+const TOTAL_ROUNDS = 10;
+const STREAK_TO_BUMP = 2;
+
 const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   easy: 'Easy',
   medium: 'Medium',
   hard: 'Hard',
 };
 
-function loadDifficulty(): Difficulty {
-  const v = loadString('difficulty');
-  if (v === 'easy' || v === 'medium' || v === 'hard') return v;
-  return 'easy';
+function nextTier(t: Difficulty): Difficulty {
+  if (t === 'easy') return 'medium';
+  if (t === 'medium') return 'hard';
+  return 'hard';
 }
 
 function hintValue(figure: Figure, key: HintType): string {
@@ -83,80 +90,48 @@ function pickRandom<T>(pool: T[]): T | null {
   return pool[Math.floor(Math.random() * pool.length)] ?? null;
 }
 
-function selectNextFigure(
+function selectFigure(
   pool: Figure[],
-  difficulty: Difficulty,
-  seen: Set<string>,
-  excludeId: string | null,
+  tier: Difficulty,
+  usedIds: ReadonlySet<string>,
 ): Figure | null {
-  const filteredByDifficulty = pool.filter((f) => f.difficulty === difficulty);
-  // 1: matching difficulty + unseen + not the current one
-  const fresh = filteredByDifficulty.filter((f) => !seen.has(f.id) && f.id !== excludeId);
+  const sameTier = pool.filter((f) => f.difficulty === tier);
+  const fresh = sameTier.filter((f) => !usedIds.has(f.id));
   if (fresh.length > 0) return pickRandom(fresh);
-  // 2: matching difficulty, any seen state, just not the current one
-  const sameDiff = filteredByDifficulty.filter((f) => f.id !== excludeId);
-  if (sameDiff.length > 0) return pickRandom(sameDiff);
-  // 3: any figure that isn't the current one
-  const anyOther = pool.filter((f) => f.id !== excludeId);
-  if (anyOther.length > 0) return pickRandom(anyOther);
-  // 4: give up — only one figure in pool
+  // Fallback if we run out of un-used in tier (shouldn't happen at 10 rounds across 99 figures).
+  if (sameTier.length > 0) return pickRandom(sameTier);
   return pickRandom(pool);
 }
 
-export function GameScreen({ goTo }: GameScreenProps) {
+export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
   const { figures, loading, error } = useFigures();
 
-  const [difficulty] = useState<Difficulty>(loadDifficulty);
+  // Run-level state (reset per challenge).
+  const [results, setResults] = useState<RoundResult[]>([]);
+  const [tier, setTier] = useState<Difficulty>('easy');
+  const [tierStreak, setTierStreak] = useState(0);
+
+  // Round-level state.
   const [figure, setFigure] = useState<Figure | null>(null);
   const [reveal, setReveal] = useState(10);
   const [guess, setGuess] = useState('');
   const [feedback, setFeedback] = useState<Feedback>(NEUTRAL_FEEDBACK);
   const [usedHints, setUsedHints] = useState<HintType[]>([]);
-  const [score, setScore] = useState(() => loadNumber('score', 0));
-  const [streak, setStreak] = useState(() => loadNumber('streak', 0));
-  const [round, setRound] = useState(() => loadNumber('round', 0));
-  const [seenIds, setSeenIds] = useState<Set<string>>(() => loadStringSet('seen'));
   const [outcome, setOutcome] = useState<Outcome>('playing');
   const [pulse, setPulse] = useState(false);
 
-  const pickFigure = useCallback(() => {
-    const next = selectNextFigure(figures, difficulty, seenIds, figure?.id ?? null);
-    if (!next) return;
-    setFigure(next);
-    setReveal(10);
-    setGuess('');
-    setFeedback(NEUTRAL_FEEDBACK);
-    setUsedHints([]);
-    setOutcome('playing');
-    setRound((r) => {
-      const next = r + 1;
-      saveNumber('round', next);
-      return next;
-    });
-  }, [figures, difficulty, seenIds, figure?.id]);
+  const usedFigureIds = new Set(results.map((r) => r.figureId));
 
-  // Pick the first figure once data lands.
-  useEffect(() => {
-    if (!figure && figures.length > 0) {
-      pickFigure();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pickFirstFigure = useCallback(() => {
+    const picked = selectFigure(figures, 'easy', new Set());
+    if (!picked) return;
+    setFigure(picked);
   }, [figures]);
 
-  const markSeen = (id: string) => {
-    setSeenIds((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      // When everyone has been seen, wipe the seen-set so endless really is endless.
-      if (next.size >= figures.length && figures.length > 0) {
-        saveStringSet('seen', new Set());
-        return new Set();
-      }
-      saveStringSet('seen', next);
-      return next;
-    });
-  };
+  useEffect(() => {
+    if (!figure && figures.length > 0) pickFirstFigure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [figures]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,25 +139,16 @@ export function GameScreen({ goTo }: GameScreenProps) {
     const trimmed = guess.trim();
     if (!trimmed) return;
     if (matches(trimmed, [figure.name, ...figure.aliases])) {
-      const earned = scoreGuess(reveal, usedHints);
-      const nextScore = score + earned;
-      const nextStreak = streak + 1;
-      setScore(nextScore);
-      setStreak(nextStreak);
-      saveNumber('score', nextScore);
-      saveNumber('streak', nextStreak);
+      const earned = scoreChallengeRound(reveal, usedHints, tier);
       setOutcome('won');
       setReveal(100);
       setFeedback({
         kind: 'success',
         text: `Correct! That's ${figure.name}. +${earned} points.`,
       });
-      markSeen(figure.id);
       setPulse(true);
       setTimeout(() => setPulse(false), 1300);
     } else {
-      setStreak(0);
-      saveNumber('streak', 0);
       setFeedback({
         kind: 'error',
         text: 'Not quite — try revealing more, or use a hint.',
@@ -190,19 +156,14 @@ export function GameScreen({ goTo }: GameScreenProps) {
     }
   };
 
-  const useHint = (key: HintType, cost: number) => {
+  const useHint = (key: HintType) => {
     if (outcome !== 'playing' || !figure) return;
     if (usedHints.includes(key)) return;
     setUsedHints((prev) => [...prev, key]);
-    const nextScore = Math.max(0, score - cost);
-    setScore(nextScore);
-    saveNumber('score', nextScore);
   };
 
   const giveUp = () => {
     if (!figure || outcome !== 'playing') return;
-    setStreak(0);
-    saveNumber('streak', 0);
     setOutcome('lost');
     setReveal(100);
     const metaParts = [figure.era, figure.field, figure.region].filter(Boolean);
@@ -211,19 +172,71 @@ export function GameScreen({ goTo }: GameScreenProps) {
       text: `It was ${figure.name}.`,
       sub: metaParts.length > 0 ? metaParts.join(' · ') : undefined,
     });
-    markSeen(figure.id);
   };
 
-  const next = () => {
-    pickFigure();
+  const advance = () => {
+    if (!figure || outcome === 'playing') return;
+
+    // Record this round's result.
+    const finalScore = outcome === 'won' ? scoreChallengeRound(reveal, usedHints, tier) : 0;
+    const result: RoundResult = {
+      figureId: figure.id,
+      figureName: figure.name,
+      difficulty: tier,
+      outcome,
+      reveal,
+      hintsUsed: usedHints,
+      finalScore,
+    };
+    const newResults = [...results, result];
+
+    // Final round → persist + jump to end screen.
+    if (newResults.length >= TOTAL_ROUNDS) {
+      const total = newResults.reduce((s, r) => s + r.finalScore, 0);
+      saveString(
+        'challenge:lastRun',
+        JSON.stringify({
+          results: newResults,
+          total,
+          finishedAt: new Date().toISOString(),
+        }),
+      );
+      setResults(newResults);
+      goTo('challenge-end');
+      return;
+    }
+
+    // Otherwise, compute next tier and pick a fresh figure.
+    let newTier = tier;
+    let newStreak = tierStreak;
+    if (outcome === 'won') {
+      newStreak = tierStreak + 1;
+      if (newStreak >= STREAK_TO_BUMP && tier !== 'hard') {
+        newTier = nextTier(tier);
+        newStreak = 0;
+      }
+    } else {
+      newStreak = 0;
+    }
+
+    const nextUsed = new Set(usedFigureIds);
+    nextUsed.add(figure.id);
+    const nextFigure = selectFigure(figures, newTier, nextUsed);
+
+    setResults(newResults);
+    setTier(newTier);
+    setTierStreak(newStreak);
+    setFigure(nextFigure);
+    setReveal(10);
+    setGuess('');
+    setFeedback(NEUTRAL_FEEDBACK);
+    setUsedHints([]);
+    setOutcome('playing');
   };
 
+  const roundNumber = results.length + 1;
+  const isLastRound = results.length === TOTAL_ROUNDS - 1;
   const activeFigure = figure ?? sampleFigure;
-
-  const headerNumeral = useMemo(
-    () => `№ ${String(round).padStart(3, '0')}`,
-    [round],
-  );
 
   return (
     <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
@@ -243,7 +256,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
 
         <header className="mb-6">
           <div className="mb-2.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-            {headerNumeral} &nbsp;·&nbsp; Practice
+            § Challenge · Round {String(roundNumber).padStart(2, '0')} / {TOTAL_ROUNDS}
           </div>
           <div
             className="leading-tight"
@@ -258,32 +271,23 @@ export function GameScreen({ goTo }: GameScreenProps) {
             People from{' '}
             <em className="font-normal italic text-(--color-amber)">History</em>
           </div>
-          <div className="mt-1.5 flex items-baseline gap-2 text-sm text-(--color-muted)">
-            <span>Round {round || 1} · {DIFFICULTY_LABEL[difficulty]}</span>
-            <a
-              href="#change"
-              onClick={(e) => {
-                e.preventDefault();
-                goTo('play-setup');
-              }}
-              className="text-xs text-(--color-amber) no-underline hover:underline"
-            >
-              change
-            </a>
+          <div className="mt-1.5 text-sm text-(--color-muted)">
+            Tier: {DIFFICULTY_LABEL[tier]}
           </div>
         </header>
 
+        <ProgressDots results={results} current={roundNumber} total={TOTAL_ROUNDS} />
+
         <div className="mb-6 border-y border-(--color-hairline) py-3 text-center text-sm tabular-nums text-(--color-muted)">
-          Score{' '}
+          Total{' '}
           <span
-            key={`score-${score}-${pulse ? 'p' : 'n'}`}
+            key={`tot-${results.length}-${pulse ? 'p' : 'n'}`}
             className={pulse ? 'pfh-pulse' : ''}
             style={{ color: pulse ? 'var(--color-amber)' : 'var(--color-ink)' }}
           >
-            {score}
+            {results.reduce((s, r) => s + r.finalScore, 0)}
           </span>{' '}
-          · Streak <span className="text-(--color-ink)">{streak}</span> · Round{' '}
-          <span className="text-(--color-ink)">{round || 1}</span>
+          · Tier streak <span className="text-(--color-ink)">{tierStreak}</span>
         </div>
 
         {loading && !figure ? (
@@ -359,7 +363,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
               label={h.label}
               used={usedHints.includes(h.key)}
               disabled={outcome !== 'playing' || !figure}
-              onUse={() => useHint(h.key, h.cost)}
+              onUse={() => useHint(h.key)}
             />
           ))}
         </div>
@@ -373,7 +377,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
             Give up
           </button>
           <button
-            onClick={next}
+            onClick={advance}
             disabled={outcome === 'playing' || !figure}
             className={
               'inline-flex min-h-11 items-center justify-center rounded-button px-6 py-3.5 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ' +
@@ -382,10 +386,59 @@ export function GameScreen({ goTo }: GameScreenProps) {
                 : 'border border-(--color-hairline) bg-transparent text-(--color-body)')
             }
           >
-            Next figure
+            {isLastRound ? 'See results' : 'Next figure'}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProgressDots({
+  results,
+  current,
+  total,
+}: {
+  results: RoundResult[];
+  current: number;
+  total: number;
+}) {
+  return (
+    <div
+      aria-label={`Round ${current} of ${total}`}
+      className="mb-5 grid gap-1.5"
+      style={{ gridTemplateColumns: `repeat(${total}, 1fr)` }}
+    >
+      {Array.from({ length: total }, (_, i) => {
+        const r = results[i];
+        if (r) {
+          const won = r.outcome === 'won';
+          return (
+            <div
+              key={i}
+              aria-hidden
+              className="aspect-square rounded-sm border"
+              style={{
+                background: won ? 'var(--color-amber-soft-2)' : 'transparent',
+                borderColor: won ? 'var(--color-amber-soft-2)' : 'var(--color-hairline-strong)',
+              }}
+            />
+          );
+        }
+        const isCurrent = i + 1 === current;
+        return (
+          <div
+            key={i}
+            aria-hidden
+            className="aspect-square rounded-sm border"
+            style={{
+              background: 'transparent',
+              borderColor: isCurrent ? 'var(--color-amber)' : 'var(--color-hairline)',
+              borderWidth: isCurrent ? 2 : 1,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -405,9 +458,7 @@ function FeedbackBox({ feedback }: { feedback: Feedback }) {
       }
     >
       <div>{feedback.text}</div>
-      {feedback.sub && (
-        <div className="mt-1 text-xs opacity-80">{feedback.sub}</div>
-      )}
+      {feedback.sub && <div className="mt-1 text-xs opacity-80">{feedback.sub}</div>}
     </div>
   );
 }
@@ -471,3 +522,4 @@ function EmptyPlaceholder() {
     </div>
   );
 }
+
