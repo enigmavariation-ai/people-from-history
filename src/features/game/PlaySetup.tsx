@@ -91,11 +91,11 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
         <SectionMark>01 · Challenge</SectionMark>
         <button
           onClick={startChallenge}
-          className="pfh-navy group mb-12 block w-full rounded-panel px-7 py-7 text-left transition-all duration-200 hover:translate-x-0.5"
+          className="pfh-navy group mb-12 block w-full rounded-panel px-7 py-7 text-left transition-[filter,transform] duration-200 hover:translate-x-0.5 hover:brightness-115 active:brightness-95"
         >
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-(--color-gold)">
-              10 rounds · adaptive · leaderboard
+              10 rounds · adaptive
             </span>
             {lastRunTotal !== null && (
               <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-on-navy-muted)">
@@ -115,10 +115,7 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
           >
             Climb the <em className="font-normal italic text-(--color-gold)">leaderboard</em>.
           </h2>
-          <p className="mt-2 text-sm text-(--color-on-navy-muted)">
-            Difficulty escalates as you score. One run, one number.
-          </p>
-          <div className="mt-6 inline-flex items-center gap-2 font-display text-base italic text-(--color-gold) transition-all duration-200 group-hover:gap-3">
+          <div className="mt-5 inline-flex items-center gap-2 font-display text-base italic text-(--color-gold) transition-all duration-200 group-hover:gap-3">
             Start
             <span>→</span>
           </div>
