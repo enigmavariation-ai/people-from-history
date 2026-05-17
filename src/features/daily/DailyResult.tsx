@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
+import { ShareCard } from '@/components/ShareCard';
 import {
   getDailyStreak,
   loadLastDailyPlay,
@@ -34,7 +35,6 @@ export function DailyResult({ goTo }: DailyResultProps) {
   const play = useMemo(() => loadLastDailyPlay(), []);
   const streak = useMemo(() => getDailyStreak(), []);
   const today = useMemo(() => todayIsoDate(), []);
-  const [copied, setCopied] = useState(false);
 
   // No play at all, or last play wasn't today — prompt to play.
   if (!play || play.date !== today) {
@@ -88,25 +88,6 @@ export function DailyResult({ goTo }: DailyResultProps) {
   );
 
   const shareText = buildShareText(play, streak);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareText);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = shareText;
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand('copy');
-      } catch {
-        // ignore
-      }
-      document.body.removeChild(ta);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
@@ -203,19 +184,9 @@ export function DailyResult({ goTo }: DailyResultProps) {
           {won ? `${filled} of 10 increments shaded.` : 'No solve today.'}
         </div>
 
-        <button
-          onClick={copy}
-          className="mb-5 inline-flex min-h-11 w-full items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
-        >
-          {copied ? 'Copied!' : 'Copy result'}
-        </button>
-
-        <pre
-          aria-label="Share preview"
-          className="mb-10 whitespace-pre-wrap break-words rounded border border-(--color-rule) bg-(--color-paper) px-5 py-4.5 font-mono text-[13px] leading-[1.7] text-(--color-body)"
-        >
-          {shareText}
-        </pre>
+        <div className="mb-10">
+          <ShareCard text={shareText} />
+        </div>
 
         <div className="pfh-ornament mb-6">
           <div className="rule" />

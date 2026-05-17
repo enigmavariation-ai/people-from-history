@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 
+import { ShareCard } from '@/components/ShareCard';
 import { LeaderboardView, type Board } from '@/features/leaderboard/LeaderboardView';
 import {
   getCurrentSessionUserId,
@@ -66,7 +67,6 @@ function buildShareText(run: LastRun): string {
 
 export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
   const [run] = useState<LastRun | null>(() => loadLastRun());
-  const [copied, setCopied] = useState(false);
 
   // Identity + leaderboard state
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -160,25 +160,6 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
     month: 'long',
     day: 'numeric',
   });
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareText);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = shareText;
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand('copy');
-      } catch {
-        // ignore
-      }
-      document.body.removeChild(ta);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -364,19 +345,9 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
           )}
         </div>
 
-        <button
-          onClick={copy}
-          className="mb-5 mt-8 inline-flex min-h-11 w-full items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
-        >
-          {copied ? 'Copied!' : 'Copy result'}
-        </button>
-
-        <pre
-          aria-label="Share preview"
-          className="mb-10 whitespace-pre-wrap break-words rounded border border-(--color-rule) bg-(--color-paper) px-5 py-4.5 font-mono text-[13px] leading-[1.7] text-(--color-body)"
-        >
-          {shareText}
-        </pre>
+        <div className="mb-10 mt-8">
+          <ShareCard text={shareText} />
+        </div>
 
         <div className="pfh-ornament mb-6">
           <div className="rule" />
