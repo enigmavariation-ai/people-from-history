@@ -123,7 +123,7 @@ export function Landing({ goTo }: LandingProps) {
             </p>
             <div className="mb-10 flex flex-wrap gap-3">
               <button
-                onClick={() => goTo('play-setup')}
+                onClick={() => goTo('daily-game')}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49]"
               >
                 Play today's puzzle →
