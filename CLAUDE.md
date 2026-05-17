@@ -26,6 +26,8 @@ The 10-figure challenge writes runs to a `runs` Supabase table on completion. Tw
 
 **Identity: anonymous Supabase auth.** Visitors get an opaque `user_id` via `supabase.auth.signInAnonymously()` (no signup, no email, no password — just a cookie-persisted anon session). A `profiles` table stores the chosen nickname per `user_id`; runs reference `user_id` and denormalize the nickname for join-free leaderboard queries. This is the only currently-allowed exception to "no user accounts" — it's the minimum identity for a meaningful leaderboard, with zero UI friction.
 
+**Captcha: Cloudflare Turnstile.** Required on the first-ever anonymous sign-in from a browser (configured in Supabase Dashboard → Authentication → Settings → CAPTCHA). The end-screen submission form renders an invisible Turnstile widget (`@marsidev/react-turnstile`, `appearance: 'interaction-only'`), produces a token, and passes it to `signInAnonymously({ options: { captchaToken } })`. Returning users with an existing session skip captcha entirely. The site key lives in `.env.local` as `VITE_TURNSTILE_SITE_KEY`; the secret key only lives in the Supabase dashboard.
+
 **Cross-device sync is not supported yet** — anon users are device-scoped. The upgrade path is a future "claim your profile" flow that converts an anon user to a real account (email magic-link or OAuth via Supabase Auth) without losing the existing `user_id` or run history. That account-upgrade flow is out of scope until we add a paid tier ("save your stats across devices" is the natural pitch).
 
 ## Tech stack

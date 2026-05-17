@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 
-import { ensureAnonAuth, getNickname, getTopRuns, submitRun, type Run } from '@/lib/runs';
+import {
+  getCurrentSessionUserId,
+  getNickname,
+  getTopRuns,
+  submitRun,
+  type Run,
+} from '@/lib/runs';
 import { loadString } from '@/lib/storage';
 import type { Screen } from '@/components/ProtoNav';
 import type { Difficulty } from '@/types/figure';
@@ -84,21 +91,28 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
   const [allTimeRuns, setAllTimeRuns] = useState<Run[] | null>(null);
   const [boardError, setBoardError] = useState<string | null>(null);
 
-  // Init: anon auth + pre-fill nickname from profile.
+  // Cloudflare Turnstile (captcha) state. Only required for the first
+  // sign-in from this browser; returning users with an existing anon
+  // session won't need a fresh token to submit.
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+
+  // Init: read existing session + pre-fill nickname from profile.
+  // Does NOT trigger a fresh anon sign-in on mount — that would fail
+  // without a captcha token. First-time visitors get the empty form;
+  // anon auth runs at submit time (with the captcha token attached).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const uid = await ensureAnonAuth();
-        if (cancelled) return;
+        const uid = await getCurrentSessionUserId();
+        if (cancelled || !uid) return;
         setCurrentUserId(uid);
-        const saved = await getNickname();
+        const saved = await getNickname(uid);
         if (!cancelled && saved) setNickname(saved);
       } catch (e) {
-        // Auth/profile errors are non-fatal — user can still see their
-        // result and the share text. They just can't post or load the
-        // leaderboard.
-        console.warn('Anon auth / nickname lookup failed', e);
+        console.warn('Session lookup failed', e);
       }
     })();
     return () => {
@@ -184,17 +198,23 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      await submitRun({
-        nickname,
-        score: run.total,
-        correctCount: correct,
-        figureIds: run.results.map((r) => r.figureId),
-      });
+      await submitRun(
+        {
+          nickname,
+          score: run.total,
+          correctCount: correct,
+          figureIds: run.results.map((r) => r.figureId),
+        },
+        captchaToken ?? undefined,
+      );
       setIsSubmitted(true);
     } catch (e) {
       setSubmitError(
-        e instanceof Error ? e.message : 'Couldn\'t submit your score.',
+        e instanceof Error ? e.message : "Couldn't submit your score.",
       );
+      // Turnstile tokens are single-use; reset for the next attempt.
+      setCaptchaToken(null);
+      turnstileRef.current?.reset();
     } finally {
       setIsSubmitting(false);
     }
@@ -293,12 +313,35 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
                 />
                 <button
                   type="submit"
-                  disabled={isSubmitting || nickname.trim().length === 0}
+                  disabled={
+                    isSubmitting ||
+                    nickname.trim().length === 0 ||
+                    (!!turnstileSiteKey && !currentUserId && !captchaToken)
+                  }
                   className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isSubmitting ? 'Posting…' : 'Submit'}
                 </button>
               </div>
+              {/* Cloudflare Turnstile — invisible widget that produces a token
+                  required only for first-time anon sign-in. Returning users
+                  with a session skip captcha entirely. */}
+              {turnstileSiteKey && !currentUserId && (
+                <div className="mt-3">
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={turnstileSiteKey}
+                    onSuccess={setCaptchaToken}
+                    onExpire={() => setCaptchaToken(null)}
+                    onError={() => setCaptchaToken(null)}
+                    options={{
+                      appearance: 'interaction-only',
+                      refreshExpired: 'auto',
+                      theme: 'light',
+                    }}
+                  />
+                </div>
+              )}
               {submitError && (
                 <div className="mt-3 rounded border border-(--color-error-border) bg-(--color-error-bg) px-3 py-2 text-xs text-(--color-error)">
                   {submitError}

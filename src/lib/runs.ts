@@ -23,25 +23,46 @@ export type LeaderboardWindow = 'today' | 'all-time';
 // Ensures we have an authenticated session (anonymous if necessary)
 // and returns the user_id. Safe to call repeatedly — sign-in is a
 // no-op if a session already exists.
-export async function ensureAnonAuth(): Promise<string> {
+//
+// The captchaToken is only required for the FIRST sign-in (returning
+// users with an existing session skip captcha entirely). Supabase
+// verifies the token against Cloudflare Turnstile server-side before
+// minting the anonymous user.
+export async function ensureAnonAuth(captchaToken?: string): Promise<string> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   if (session) return session.user.id;
-  const { data, error } = await supabase.auth.signInAnonymously();
+  const { data, error } = await supabase.auth.signInAnonymously(
+    captchaToken ? { options: { captchaToken } } : undefined,
+  );
   if (error) throw error;
   if (!data.session) throw new Error('Anonymous sign-in returned no session.');
   return data.session.user.id;
 }
 
-// Read the current user's stored nickname (if any). Used to pre-fill
-// the end-screen submission form for returning players.
-export async function getNickname(): Promise<string | null> {
-  const userId = await ensureAnonAuth();
+// Returns the user_id of the currently-authenticated session, or null
+// if there isn't one. Never triggers a sign-in — use this when you only
+// want to read existing-user state (e.g. pre-filling forms on mount,
+// before captcha has produced a token).
+export async function getCurrentSessionUserId(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.user.id ?? null;
+}
+
+// Read the user's stored nickname (if any). Pass an explicit userId
+// when you already have one (to avoid triggering ensureAnonAuth); if
+// omitted, falls back to the current session and returns null if
+// there isn't one.
+export async function getNickname(userId?: string): Promise<string | null> {
+  const uid = userId ?? (await getCurrentSessionUserId());
+  if (!uid) return null;
   const { data, error } = await supabase
     .from('profiles')
     .select('nickname')
-    .eq('user_id', userId)
+    .eq('user_id', uid)
     .maybeSingle();
   if (error) throw error;
   return (data?.nickname as string | undefined) ?? null;
@@ -63,8 +84,15 @@ export async function setNickname(nickname: string): Promise<void> {
 
 // Submit a completed challenge run. Persists the nickname on the row
 // itself (denormalized) so the leaderboard never needs a join.
-export async function submitRun(submission: RunSubmission): Promise<Run> {
-  const userId = await ensureAnonAuth();
+//
+// The captchaToken is forwarded to ensureAnonAuth — only consumed on
+// the first-ever submission from this browser; subsequent submits
+// reuse the existing anon session.
+export async function submitRun(
+  submission: RunSubmission,
+  captchaToken?: string,
+): Promise<Run> {
+  const userId = await ensureAnonAuth(captchaToken);
   const trimmedNickname = submission.nickname.trim();
 
   // Upsert nickname into profile so it pre-fills next time.
