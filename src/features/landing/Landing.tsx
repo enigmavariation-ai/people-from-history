@@ -58,7 +58,7 @@ export function Landing({ goTo }: LandingProps) {
             {[
               { label: 'Play', target: 'play-setup' as const },
               { label: 'How to play', target: null },
-              { label: 'Leaderboard', target: null },
+              { label: 'Leaderboard', target: 'leaderboard' as const },
               { label: 'About', target: null },
             ].map((l) => (
               <a

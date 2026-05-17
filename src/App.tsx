@@ -7,6 +7,7 @@ import { ChallengeScreen } from '@/features/game/ChallengeScreen';
 import { GameScreen } from '@/features/game/GameScreen';
 import { PlaySetup } from '@/features/game/PlaySetup';
 import { Landing } from '@/features/landing/Landing';
+import { LeaderboardScreen } from '@/features/leaderboard/LeaderboardScreen';
 
 function App() {
   const [screen, setScreen] = useState<Screen>('landing');
@@ -28,6 +29,7 @@ function App() {
         {screen === 'game' && <GameScreen goTo={goTo} />}
         {screen === 'challenge' && <ChallengeScreen key="challenge" goTo={goTo} />}
         {screen === 'challenge-end' && <ChallengeEndScreen goTo={goTo} />}
+        {screen === 'leaderboard' && <LeaderboardScreen goTo={goTo} />}
         {screen === 'daily' && <DailyResult goTo={goTo} />}
       </div>
     </div>

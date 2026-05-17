@@ -4,6 +4,7 @@ export const SCREENS = [
   { id: 'game', label: 'Practice' },
   { id: 'challenge', label: 'Challenge' },
   { id: 'challenge-end', label: 'Challenge result' },
+  { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'daily', label: 'Daily result' },
 ] as const;
 
