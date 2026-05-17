@@ -320,14 +320,18 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
                   }
                   className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Posting…' : 'Submit'}
+                  {isSubmitting
+                    ? 'Posting…'
+                    : turnstileSiteKey && !currentUserId && !captchaToken
+                      ? 'Verifying…'
+                      : 'Submit'}
                 </button>
               </div>
-              {/* Cloudflare Turnstile — invisible widget that produces a token
-                  required only for first-time anon sign-in. Returning users
-                  with a session skip captcha entirely. */}
+              {/* Cloudflare Turnstile — produces a token required only for
+                  first-time anon sign-in. Returning users with a session
+                  skip captcha entirely. */}
               {turnstileSiteKey && !currentUserId && (
-                <div className="mt-3">
+                <div className="mt-3 flex items-center gap-3">
                   <Turnstile
                     ref={turnstileRef}
                     siteKey={turnstileSiteKey}
@@ -335,11 +339,23 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
                     onExpire={() => setCaptchaToken(null)}
                     onError={() => setCaptchaToken(null)}
                     options={{
-                      appearance: 'interaction-only',
+                      appearance: 'always',
                       refreshExpired: 'auto',
                       theme: 'light',
+                      size: 'compact',
                     }}
                   />
+                  {!captchaToken && (
+                    <span className="text-xs text-(--color-muted)">
+                      Verifying you're human…
+                    </span>
+                  )}
+                </div>
+              )}
+              {!turnstileSiteKey && (
+                <div className="mt-3 rounded border border-(--color-error-border) bg-(--color-error-bg) px-3 py-2 text-xs text-(--color-error)">
+                  Turnstile site key not set. Restart <code>npm run dev</code> after
+                  adding <code>VITE_TURNSTILE_SITE_KEY</code> to <code>.env.local</code>.
                 </div>
               )}
               {submitError && (
