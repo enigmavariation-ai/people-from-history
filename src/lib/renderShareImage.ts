@@ -14,6 +14,8 @@ import type { HintType } from '@/types/hint';
 import type { DailyPlay } from '@/lib/daily';
 
 type ChallengeRoundResult = {
+  figureId: string;
+  figureName: string;
   difficulty: Difficulty;
   outcome: 'won' | 'lost';
   reveal: number;
@@ -443,74 +445,164 @@ const TIER_LETTER: Record<Difficulty, string> = {
   hard: 'H',
 };
 
-export async function renderChallengeShareImage(run: ChallengeRun): Promise<Blob> {
+// Layout (1080×1080), hero variant:
+//   y = 72:         eyebrow row (wordmark)
+//   y = 128..608:   portrait frame 936×480 (best-round figure) with
+//                   scrim + "Best round · {name}" caption
+//   y = 640:        eyebrow "FINAL SCORE"
+//   y = 808:        big total (alphabetic baseline, 168px)
+//   y = 842:        accuracy sub-line
+//   y = 892..922:   compact 10-cell W/L grid
+//   y = 944:        tier letters under the grid
+//   y = 1008:       footer wordmark
+//
+// Fallback variant (no won round → no portrait): the grid + score
+// occupy the upper half of the canvas with the same scaffolding.
+export async function renderChallengeShareImage(
+  run: ChallengeRun,
+  bestRound: ChallengeRoundResult | null,
+  bestRoundFigure: { image_url: string | null; name: string; focal_x: number; focal_y: number } | null,
+): Promise<Blob> {
   const canvas = newCanvas();
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas context unavailable');
 
   await ensureFontsReady();
 
-  // Cream base with a paper-tinted upper half for editorial contrast.
-  ctx.fillStyle = CREAM;
-  ctx.fillRect(0, 0, SIZE, SIZE);
-  ctx.fillStyle = PAPER;
-  ctx.fillRect(0, 0, SIZE, SIZE * 0.42);
-  ctx.strokeStyle = HAIRLINE_STRONG;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(PAD, SIZE * 0.42);
-  ctx.lineTo(SIZE - PAD, SIZE * 0.42);
-  ctx.stroke();
-
   const dateLabel = new Date(run.finishedAt).toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
   });
   const correct = run.results.filter((r) => r.outcome === 'won').length;
+  const accuracy = run.results.length
+    ? Math.round((correct / run.results.length) * 100)
+    : 0;
 
+  drawBackdrop(ctx);
   drawWordmark(ctx, `Challenge · ${dateLabel}`);
 
+  // Portrait frame (best round) — try to load the image; fall back
+  // to a paper card with the figure name if it fails or no figure
+  // is available.
+  const frameX = PAD;
+  const frameY = 128;
+  const frameW = SIZE - PAD * 2;
+  const frameH = 480;
+  const frameR = 16;
+
+  let portraitDrawn = false;
+  if (bestRound && bestRoundFigure?.image_url) {
+    try {
+      const img = await loadImage(bestRoundFigure.image_url);
+      drawFocalImage(
+        ctx,
+        img,
+        bestRoundFigure.focal_x,
+        bestRoundFigure.focal_y,
+        frameX,
+        frameY,
+        frameW,
+        frameH,
+        frameR,
+      );
+      portraitDrawn = true;
+    } catch {
+      // Fall through to the paper fallback below.
+    }
+  }
+  if (!portraitDrawn) {
+    drawPortraitFallback(
+      ctx,
+      frameX,
+      frameY,
+      frameW,
+      frameH,
+      frameR,
+      bestRound?.figureName ?? 'No solve this run',
+    );
+  }
+
+  // Scrim + caption — only when we have a best round to credit.
+  if (bestRound) {
+    drawPortraitScrim(ctx, frameX, frameY, frameW, frameH, frameR, 200);
+    // Custom caption with the "Best round" eyebrow + figure name + meta.
+    ctx.save();
+    roundedRectPath(ctx, frameX, frameY, frameW, frameH, frameR);
+    ctx.clip();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+    ctx.font = `500 14px ${FONT_MONO}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(
+      `BEST ROUND · +${bestRound.finalScore} POINTS`,
+      frameX + 28,
+      frameY + frameH - 84,
+    );
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+    ctx.font = `500 44px ${FONT_DISPLAY}`;
+    const maxNameW = frameW - 56;
+    ctx.fillText(
+      truncateToWidth(ctx, bestRound.figureName, maxNameW),
+      frameX + 28,
+      frameY + frameH - 36,
+    );
+    ctx.restore();
+  }
+
+  // Final-score eyebrow
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
-
-  ctx.font = `400 156px ${FONT_DISPLAY}`;
-  ctx.fillStyle = INK;
-  ctx.fillText(String(run.total), SIZE / 2, 175);
-
-  ctx.font = `400 28px ${FONT_DISPLAY}`;
   ctx.fillStyle = AMBER;
-  ctx.fillText('POINTS', SIZE / 2, 360);
+  ctx.font = `500 18px ${FONT_MONO}`;
+  ctx.fillText('FINAL SCORE', SIZE / 2, 640);
 
-  ctx.font = `400 36px ${FONT_DISPLAY}`;
+  // Big total
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = INK;
+  ctx.font = `400 168px ${FONT_DISPLAY}`;
+  ctx.fillText(String(run.total), SIZE / 2, 808);
+
+  // Sub-line — accuracy + correct ratio
+  ctx.textBaseline = 'top';
   ctx.fillStyle = BODY;
-  ctx.fillText(`${correct} of ${run.results.length} correct`, SIZE / 2, 412);
+  ctx.font = `400 26px ${FONT_DISPLAY}`;
+  ctx.fillText(
+    `${correct} of ${run.results.length} correct · ${accuracy}% accuracy`,
+    SIZE / 2,
+    828,
+  );
 
-  const cellSize = 60;
-  const gap = 12;
+  // 10-cell W/L grid (compact)
+  const cellSize = 30;
+  const cellGap = 8;
   const cells = run.results.length;
-  const totalW = cells * cellSize + (cells - 1) * gap;
-  const gridY = 580;
-  const startX = (SIZE - totalW) / 2;
+  const totalCellsW = cells * cellSize + (cells - 1) * cellGap;
+  const gridY = 892;
+  const gridStartX = (SIZE - totalCellsW) / 2;
   for (let i = 0; i < cells; i++) {
     const r = run.results[i];
-    const x = startX + i * (cellSize + gap);
+    const x = gridStartX + i * (cellSize + cellGap);
     if (r.outcome === 'won') {
       ctx.fillStyle = AMBER_SOFT_2;
       ctx.fillRect(x, gridY, cellSize, cellSize);
     } else {
       ctx.strokeStyle = HAIRLINE_STRONG;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x + 0.75, gridY + 0.75, cellSize - 1.5, cellSize - 1.5);
+      ctx.lineWidth = 1.25;
+      ctx.strokeRect(x + 0.625, gridY + 0.625, cellSize - 1.25, cellSize - 1.25);
     }
   }
 
+  // Tier letters under each cell
   ctx.fillStyle = MUTED;
-  ctx.font = `500 22px ${FONT_MONO}`;
+  ctx.font = `500 14px ${FONT_MONO}`;
   ctx.textBaseline = 'top';
+  ctx.textAlign = 'center';
   for (let i = 0; i < cells; i++) {
     const r = run.results[i];
-    const x = startX + i * (cellSize + gap) + cellSize / 2;
-    ctx.fillText(TIER_LETTER[r.difficulty], x, gridY + cellSize + 16);
+    const x = gridStartX + i * (cellSize + cellGap) + cellSize / 2;
+    ctx.fillText(TIER_LETTER[r.difficulty], x, gridY + cellSize + 10);
   }
 
   drawFooter(ctx);
