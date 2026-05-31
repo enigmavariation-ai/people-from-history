@@ -227,12 +227,28 @@ export function PrivacyScreen({ goTo }: PrivacyScreenProps) {
 
         <Section title="8. Deleting your account">
           <p>
-            You can request deletion of your account and all associated game
-            data at any time by emailing{' '}
+            You can delete your account and all associated game data at any
+            time from your{' '}
+            <button
+              type="button"
+              onClick={() => goTo('profile')}
+              className="text-(--color-amber) underline-offset-2 hover:underline"
+            >
+              profile page
+            </button>
+            : open Profile and use the "Delete my account" button under
+            "Danger zone". Deletion is immediate and irreversible — your
+            email, leaderboard nickname, daily play history, Practice
+            progress, and Challenge runs are removed from our database
+            within the same request.
+          </p>
+          <p className="mt-2">
+            If you've lost access to your account and can't sign in, email{' '}
             <a className="text-(--color-amber) underline-offset-2 hover:underline" href="mailto:[email@example.com]">
               [email@example.com]
             </a>{' '}
-            from the address linked to your account.
+            from the address linked to your account and we'll delete it on
+            your behalf.
           </p>
         </Section>
 

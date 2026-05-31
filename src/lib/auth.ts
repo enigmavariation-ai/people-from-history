@@ -182,6 +182,26 @@ export async function signOut(): Promise<void> {
   if (error) throw error;
 }
 
+// Self-service account deletion. Calls the `delete_my_account` RPC
+// (see migration 0007) which removes the caller's auth.users row;
+// foreign-key cascades clean up daily_plays / practice_state / runs /
+// profiles. Signs the user out afterwards so the now-invalid JWT
+// stops being held in localStorage.
+//
+// Throws if the user isn't authenticated. Caller should show a
+// confirmation dialog first — there is no recovery once this runs.
+export async function deleteMyAccount(): Promise<void> {
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) throw error;
+  // Best-effort sign-out; if it fails we still want to treat the
+  // account as gone since the auth row no longer exists.
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // ignore
+  }
+}
+
 // Subscribe to auth changes. Returns an unsubscribe function. The
 // callback is fired with the current session immediately after the
 // SDK finishes initial session detection (a few ms after page load).

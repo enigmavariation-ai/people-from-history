@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { AppMenu } from '@/components/AppMenu';
-import { isAnonymous, isPermanent, signOut, userDisplayLabel } from '@/lib/auth';
+import { deleteMyAccount, isAnonymous, isPermanent, signOut, userDisplayLabel } from '@/lib/auth';
 import { getDailyStreak } from '@/lib/daily';
 import { getNickname, setNickname } from '@/lib/runs';
 import { loadNumber, loadStringSet } from '@/lib/storage';
@@ -31,6 +31,11 @@ export function ProfileScreen({ goTo }: ProfileScreenProps) {
   const [draftNickname, setDraftNickname] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Two-step delete: first click opens the confirmation panel; second
+  // click in that panel actually fires the RPC. Keeps the flow tap-
+  // safe without a separate modal.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Local stats — read straight from localStorage so they're instant.
   // Sync from Supabase happens in the background via syncState.
@@ -133,6 +138,23 @@ export function ProfileScreen({ goTo }: ProfileScreenProps) {
       setError(e instanceof Error ? e.message : "Couldn't sign out.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteMyAccount();
+      // syncState's auth listener will fire on the resulting
+      // signed-out state; nothing else to clean up locally.
+      goTo('landing');
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "Couldn't delete your account.",
+      );
+      setDeleting(false);
     }
   };
 
@@ -364,16 +386,62 @@ export function ProfileScreen({ goTo }: ProfileScreenProps) {
                 />
               )}
             </div>
-            <p className="mt-2 text-xs text-(--color-muted)">
-              Want your account deleted? Email{' '}
-              <a
-                href="mailto:niklas.fip@gmail.com?subject=Delete%20my%20account"
-                className="text-(--color-amber) underline-offset-2 hover:underline"
+          </div>
+        )}
+
+        {/* Danger zone — self-service account deletion via the
+            delete_my_account RPC (migration 0007). Two-step: first
+            click opens the confirmation panel; second click fires
+            the deletion. Cascades clean up daily_plays, runs, etc. */}
+        {user && !anon && (
+          <div className="mb-6">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-muted)">
+              Danger zone
+            </div>
+            {deleteOpen ? (
+              <div className="rounded-card border border-(--color-error-border) bg-(--color-error-bg)/40 px-4 py-3.5">
+                <div
+                  className="mb-1.5 leading-snug"
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 18,
+                    fontWeight: 500,
+                    color: 'var(--color-ink)',
+                    letterSpacing: '-0.01em',
+                  }}
+                >
+                  Delete your account?
+                </div>
+                <p className="mb-3 text-sm text-(--color-body)">
+                  This permanently removes your daily plays, challenge runs,
+                  Practice progress, and leaderboard nickname. It can't be
+                  undone.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-error) bg-(--color-error) px-5 py-2.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {deleting ? 'Deleting…' : 'Yes, delete everything'}
+                  </button>
+                  <button
+                    onClick={() => setDeleteOpen(false)}
+                    disabled={deleting}
+                    className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-hairline-strong) bg-transparent px-5 py-2.5 text-sm text-(--color-body) hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setDeleteOpen(true)}
+                className="inline-flex min-h-10 items-center justify-center rounded-button border border-(--color-hairline-strong) bg-transparent px-4 py-2 text-sm text-(--color-error) transition-colors duration-150 hover:bg-(--color-error-bg)/50"
               >
-                niklas.fip@gmail.com
-              </a>{' '}
-              with the address linked to your account.
-            </p>
+                Delete my account…
+              </button>
+            )}
           </div>
         )}
 
