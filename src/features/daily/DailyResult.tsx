@@ -123,8 +123,8 @@ export function DailyResult({ goTo }: DailyResultProps) {
 
   const shareText = buildShareText(play, streak);
   const getShareImage = useCallback(
-    () => renderDailyShareImage(play, streak),
-    [play, streak],
+    () => renderDailyShareImage(play, streak, figure),
+    [play, streak, figure],
   );
 
   return (
