@@ -405,7 +405,6 @@ export function RoundChrome(props: RoundChromeProps) {
       <MobileTree {...props} stageContent={stageContent} />
       <DesktopTree
         {...props}
-        potentialMax={potentialMax}
         scoreLabel={scoreLabel}
         streakLabel={streakLabel}
         nextLabel={nextLabel}
@@ -664,7 +663,6 @@ function CompactFeedback({ feedback }: { feedback: Feedback }) {
 function DesktopTree(
   props: RoundChromeProps & {
     stageContent: React.ReactNode;
-    potentialMax: number;
     scoreLabel: string;
     streakLabel: string;
     nextLabel: string;
@@ -699,7 +697,6 @@ function DesktopTree(
     onGiveUp,
     onNext,
     footMeta,
-    potentialMax,
     scoreLabel,
     streakLabel,
     nextLabel,

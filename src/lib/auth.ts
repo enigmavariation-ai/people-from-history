@@ -141,9 +141,11 @@ export async function signInWithMagicLink(
 // Anonymous users get their existing user_id preserved via
 // linkIdentity. If the Google identity is already linked to another
 // user, we drop the anon session and fall through to a regular
-// OAuth sign-in. captchaToken is consumed by Supabase when its
-// project-level captcha is enabled.
-export async function signInWithGoogle(captchaToken?: string): Promise<void> {
+// OAuth sign-in. The captchaToken arg is accepted (and ignored) for
+// API symmetry with `signInWithMagicLink`; OAuth providers handle
+// bot protection on their own side, so Supabase doesn't accept a
+// captcha token on this path.
+export async function signInWithGoogle(_captchaToken?: string): Promise<void> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -166,7 +168,7 @@ export async function signInWithGoogle(captchaToken?: string): Promise<void> {
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: redirectUrl(), captchaToken },
+    options: { redirectTo: redirectUrl() },
   });
   if (error) throw error;
 }
