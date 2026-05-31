@@ -90,6 +90,10 @@ function computeVerdict(
 export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
   const [run] = useState<LastRun | null>(() => loadLastRun());
   const { figures } = useFigures();
+  // Rounds-by-round table is closed by default — the outcome strip
+  // above conveys the shape of the run at a glance; the table is
+  // only useful when a player wants to study an individual round.
+  const [roundsOpen, setRoundsOpen] = useState(false);
 
   // Identity + leaderboard state
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -241,7 +245,7 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
 
   return (
     <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[520px] px-5 pb-24 pt-5 md:max-w-[1040px] md:px-10 md:pt-10">
+      <div className="mx-auto max-w-[520px] px-5 pt-5 md:max-w-[1040px] md:px-10 md:pt-10" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 11rem)' }}>
         <div className="mb-5 md:mb-8">
           <AppMenu goTo={goTo} currentScreen="challenge-end" />
         </div>
@@ -418,7 +422,7 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
               ))}
             </div>
             <div
-              className="mb-4 grid gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-(--color-muted)"
+              className="grid gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-(--color-muted)"
               style={{ gridTemplateColumns: `repeat(${run.results.length}, 1fr)` }}
             >
               {run.results.map((r, i) => (
@@ -427,7 +431,26 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
                 </div>
               ))}
             </div>
-            <RoundsTable results={run.results} />
+            <button
+              type="button"
+              onClick={() => setRoundsOpen((v) => !v)}
+              aria-expanded={roundsOpen}
+              className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-button border border-(--color-hairline) bg-transparent px-3 py-2 text-xs font-medium text-(--color-body) transition-colors duration-150 hover:bg-(--color-bg)"
+            >
+              {roundsOpen ? 'Hide round details' : 'View round-by-round'}
+              <span
+                aria-hidden
+                className="transition-transform duration-200"
+                style={{ transform: roundsOpen ? 'rotate(180deg)' : 'none' }}
+              >
+                ↓
+              </span>
+            </button>
+            {roundsOpen && (
+              <div className="mt-3">
+                <RoundsTable results={run.results} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -449,25 +472,33 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
           </div>
         )}
 
-        <div className="pfh-ornament mb-6 mt-2">
-          <div className="rule" />
-          <div className="dot" />
-          <div className="rule" />
-        </div>
-
-        <div className="flex flex-col items-center gap-3 text-center">
+        {/* Closing action — Try again is the primary path out. Make
+            it a full-width filled CTA so the eye lands here at the
+            end of the page without searching. */}
+        <div className="mt-2">
           <button
             onClick={() => goTo('challenge')}
-            className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-amber) bg-transparent px-6 py-2.5 text-sm font-medium text-(--color-amber) transition-colors duration-150 hover:bg-(--color-amber-soft)/40"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3 text-base font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 17,
+              fontWeight: 500,
+              letterSpacing: '-0.01em',
+            }}
           >
-            Try again →
+            Try again
+            <span aria-hidden style={{ fontSize: 16 }}>
+              →
+            </span>
           </button>
-          <button
-            onClick={() => goTo('landing')}
-            className="text-sm text-(--color-muted) hover:text-(--color-body)"
-          >
-            Back to home
-          </button>
+          <div className="mt-3 text-center">
+            <button
+              onClick={() => goTo('landing')}
+              className="text-sm text-(--color-muted) hover:text-(--color-body)"
+            >
+              Back to home
+            </button>
+          </div>
         </div>
       </div>
     </div>
