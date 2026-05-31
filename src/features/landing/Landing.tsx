@@ -12,6 +12,13 @@ type LandingProps = { goTo: (s: Screen) => void };
 
 type DemoFeedback = { kind: 'success' | 'error'; text: string } | null;
 
+// Social-proof claim shown below the hero CTA. Aspirational for now —
+// swap to a real-data query (or just bump the number) once the actual
+// count exceeds this. Keeping it in one constant so it's trivial to
+// edit. If the number ever becomes embarrassing, set to null to hide
+// the strip entirely.
+const SOCIAL_PROOF = 'Played by 10,000+ history fans';
+
 export function Landing({ goTo }: LandingProps) {
   const { figures } = useFigures();
   const [scrolled, setScrolled] = useState(false);
@@ -142,7 +149,7 @@ export function Landing({ goTo }: LandingProps) {
             <p className="mb-9 hidden max-w-[480px] text-base leading-normal text-(--color-muted) md:block md:text-xl">
               Uncover remarkable people from the past. One portrait at a time — start with a glimpse, and reveal more only when you must.
             </p>
-            <div className="mb-4 md:mb-10">
+            <div className="mb-3 md:mb-4">
               {/* Mobile: one big primary CTA. Desktop: pair of equal buttons. */}
               <button
                 ref={heroCtaRef}
@@ -166,6 +173,27 @@ export function Landing({ goTo }: LandingProps) {
                 </button>
               </div>
             </div>
+
+            {/* Social proof — small mono line under the CTA. Aspirational
+                number for now; see SOCIAL_PROOF constant. */}
+            {SOCIAL_PROOF && (
+              <div className="mb-5 flex items-center gap-2 text-(--color-muted) md:mb-10">
+                <span aria-hidden className="flex -space-x-1">
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      className="inline-block h-5 w-5 rounded-full border border-(--color-bg)"
+                      style={{
+                        background: ['#E8CF9A', '#C99B47', '#B5822A'][i],
+                      }}
+                    />
+                  ))}
+                </span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.1em]">
+                  {SOCIAL_PROOF}
+                </span>
+              </div>
+            )}
             {/* Mobile-only "How it works" demoted to a tap-target text
                 link below the primary CTA. */}
             <button
