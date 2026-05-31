@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { AppMenu } from '@/components/AppMenu';
+import { Coachmarks } from '@/components/Coachmarks';
+import { WinCelebration } from '@/components/WinCelebration';
 import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
 import { matches } from '@/lib/matching';
-import { scoreGuess } from '@/lib/scoring';
 import {
   loadNumber,
   loadString,
@@ -11,6 +13,7 @@ import {
   saveNumber,
   saveStringSet,
 } from '@/lib/storage';
+import { pushPracticeState } from '@/lib/syncState';
 import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
 import type { Difficulty, Figure } from '@/types/figure';
@@ -93,7 +96,6 @@ export function GameScreen({ goTo }: GameScreenProps) {
   const [guess, setGuess] = useState('');
   const [feedback, setFeedback] = useState<Feedback>(NEUTRAL_FEEDBACK);
   const [usedHints, setUsedHints] = useState<HintType[]>([]);
-  const [score, setScore] = useState(() => loadNumber('score', 0));
   const [streak, setStreak] = useState(() => loadNumber('streak', 0));
   const [round, setRound] = useState(() => loadNumber('round', 0));
   const [seenIds, setSeenIds] = useState<Set<string>>(() => loadStringSet('seen'));
@@ -143,21 +145,18 @@ export function GameScreen({ goTo }: GameScreenProps) {
     const trimmed = guess.trim();
     if (!trimmed) return;
     if (matches(trimmed, [figure.name, ...figure.aliases])) {
-      const earned = scoreGuess(reveal, usedHints);
-      const nextScore = score + earned;
       const nextStreak = streak + 1;
-      setScore(nextScore);
       setStreak(nextStreak);
-      saveNumber('score', nextScore);
       saveNumber('streak', nextStreak);
       setOutcome('won');
       setFeedback({
         kind: 'success',
-        text: `Correct! That's ${figure.name}. +${earned} points.`,
+        text: `That's ${figure.name}.`,
       });
       markSeen(figure.id);
       setPulse(true);
       setTimeout(() => setPulse(false), 1300);
+      pushPracticeState();
     } else {
       setStreak(0);
       saveNumber('streak', 0);
@@ -165,16 +164,14 @@ export function GameScreen({ goTo }: GameScreenProps) {
         kind: 'error',
         text: 'Not quite — try revealing more, or use a hint.',
       });
+      pushPracticeState();
     }
   };
 
-  const useHint = (key: HintType, cost: number) => {
+  const useHint = (key: HintType) => {
     if (outcome !== 'playing' || !figure) return;
     if (usedHints.includes(key)) return;
     setUsedHints((prev) => [...prev, key]);
-    const nextScore = Math.max(0, score - cost);
-    setScore(nextScore);
-    saveNumber('score', nextScore);
   };
 
   const giveUp = () => {
@@ -189,6 +186,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
       sub: metaParts.length > 0 ? metaParts.join(' · ') : undefined,
     });
     markSeen(figure.id);
+    pushPracticeState();
   };
 
   const next = () => {
@@ -197,7 +195,6 @@ export function GameScreen({ goTo }: GameScreenProps) {
 
   const activeFigure = figure ?? sampleFigure;
   const visualReveal = outcome === 'playing' ? reveal : 100;
-  const potential = scoreGuess(reveal, usedHints);
 
   const headerNumeral = useMemo(
     () => `№ ${String(round).padStart(3, '0')}`,
@@ -213,7 +210,8 @@ export function GameScreen({ goTo }: GameScreenProps) {
       hintsUsedCount={usedHints.length}
       difficulty={difficulty}
       onChangeDifficulty={() => goTo('play-setup')}
-      goHome={() => goTo('landing')}
+      goTo={goTo}
+      currentScreen="game"
       loading={loading && !figure}
       error={error && !figure ? error : null}
       empty={!loading && !error && figures.length === 0}
@@ -223,8 +221,8 @@ export function GameScreen({ goTo }: GameScreenProps) {
       onReveal={(v) => {
         if (v > reveal) setReveal(v);
       }}
-      potential={potential}
-      score={score}
+      potential={0}
+      score={0}
       streak={streak}
       outcome={outcome}
       pulse={pulse}
@@ -237,6 +235,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
       onGiveUp={giveUp}
       onNext={next}
       footMeta={null}
+      practiceProgress={{ seen: seenIds.size, total: figures.length }}
     />
   );
 }
@@ -256,7 +255,8 @@ export type RoundChromeProps = {
   hintsUsedCount: number;
   difficulty: Difficulty;
   onChangeDifficulty: () => void;
-  goHome: () => void;
+  goTo: (s: Screen) => void;
+  currentScreen: Screen;
   loading: boolean;
   error: Error | null;
   empty: boolean;
@@ -275,7 +275,7 @@ export type RoundChromeProps = {
   onSubmit: (e: React.FormEvent) => void;
   feedback: Feedback;
   usedHints: HintType[];
-  onUseHint: (key: HintType, cost: number) => void;
+  onUseHint: (key: HintType) => void;
   onGiveUp: () => void;
   onNext: () => void;
   footMeta: string | null;
@@ -284,10 +284,36 @@ export type RoundChromeProps = {
   streakLabel?: string;    // defaults "Streak" — Challenge uses "Tier streak"
   nextLabel?: string;      // defaults "Next figure" — Challenge final round uses "See results"
   topInsert?: React.ReactNode; // optional element rendered below top bar, above body (e.g. ProgressDots)
+  // Practice-mode dossier stats (figures seen / total). Only rendered when mode === 'practice'.
+  practiceProgress?: { seen: number; total: number };
 };
+
+// Three-step quick walkthrough for first-time players. Runs once per
+// device across all modes (Practice / Challenge / Daily) so a new
+// user sees the slider, hints, and guess mechanics explained no
+// matter where they enter. Suppressed by a localStorage flag after
+// the first dismissal or completion.
+const ROUND_COACHMARKS = [
+  {
+    eyebrow: 'Step 1 of 3',
+    headline: 'Drag the slider to reveal more of the portrait.',
+    body: 'Start with the tightest crop. Each percent you uncover costs a point — so guess as early as you can.',
+  },
+  {
+    eyebrow: 'Step 2 of 3',
+    headline: 'Stuck? Tap a hint.',
+    body: 'Era, Field, Region, and Initial each reveal a clue. In Challenge they cost points; in Practice and Daily they’re free.',
+  },
+  {
+    eyebrow: 'Step 3 of 3',
+    headline: 'Type a guess and hit return.',
+    body: 'Spelling doesn’t have to be perfect — last names usually work.',
+  },
+];
 
 export function RoundChrome(props: RoundChromeProps) {
   const {
+    mode,
     loading,
     error,
     empty,
@@ -303,6 +329,7 @@ export function RoundChrome(props: RoundChromeProps) {
     nextLabel = 'Next figure',
     topInsert,
   } = props;
+  const isPractice = mode === 'practice';
 
   const stageContent = loading ? (
     <LoadingPlaceholder />
@@ -312,6 +339,16 @@ export function RoundChrome(props: RoundChromeProps) {
     <EmptyPlaceholder />
   ) : (
     <div className="relative">
+      {/* Win halo — amber radial glow that fades in/out behind the
+          stage on a correct guess. `key={pulse}` re-mounts the
+          element so the animation restarts on each new win. */}
+      {pulse && (
+        <div
+          key={`halo-${pulse}`}
+          aria-hidden
+          className="pfh-halo pointer-events-none absolute -inset-6 z-0"
+        />
+      )}
       <CropStage
         key={figure.id}
         imageUrl={figure.image_url ?? sampleFigure.image_url}
@@ -319,21 +356,52 @@ export function RoundChrome(props: RoundChromeProps) {
         startSize={figure.start_size}
         revealPct={visualReveal}
       />
-      {/* Mobile-only pill overlays */}
+      {/* Mobile-only pill overlays. Practice hides the score-side pills
+          since Practice mode doesn't track points. */}
       <div className="absolute left-3 top-3 md:hidden">
         <PillStat label="Revealed" value={`${visualReveal}%`} />
       </div>
-      <div className="absolute right-3 top-3 md:hidden">
-        <PillStat label="Potential" value={String(potential)} tone="ink" />
-      </div>
+      {!isPractice && (
+        <div className="absolute right-3 top-3 md:hidden">
+          <PillStat label="Potential" value={String(potential)} tone="ink" />
+        </div>
+      )}
       <div className="absolute bottom-3 left-3 md:hidden">
-        <PillStat label={scoreLabel} value={String(score)} tone="amber" extra={`· ${streakLabel} ${streak}`} pulse={pulse} />
+        {isPractice ? (
+          <PillStat label={streakLabel} value={String(streak)} tone="amber" pulse={pulse} />
+        ) : (
+          <PillStat
+            label={scoreLabel}
+            value={String(score)}
+            tone="amber"
+            extra={`· ${streakLabel} ${streak}`}
+            pulse={pulse}
+          />
+        )}
       </div>
     </div>
   );
 
+  // Coachmarks render at the root so they overlay both trees, and
+  // only appear after at least one figure has loaded (so the
+  // walkthrough never floats over a loading spinner).
+  const showCoachmarks = !loading && !error && !empty;
+
+  // Win celebration — center-screen phrase + points whenever pulse
+  // flips. Practice has no scoring, so we pass null and the points
+  // line is omitted. `trigger` is the figure id so a new round
+  // restarts the animation cleanly.
+  const pointsLabel =
+    isPractice || props.potential <= 0 ? null : `+${props.potential} points`;
+
   return (
     <>
+      {showCoachmarks && (
+        <Coachmarks steps={ROUND_COACHMARKS} storageKey="onboarding:rounds" />
+      )}
+      {pulse && (
+        <WinCelebration trigger={figure?.id ?? 'win'} pointsLabel={pointsLabel} />
+      )}
       <MobileTree {...props} stageContent={stageContent} />
       <DesktopTree
         {...props}
@@ -357,11 +425,13 @@ function MobileTree(
   props: RoundChromeProps & { stageContent: React.ReactNode },
 ) {
   const {
+    mode,
     headerNumeral,
     headerLabel,
     difficulty,
     onChangeDifficulty,
-    goHome,
+    goTo,
+    currentScreen,
     figure,
     reveal,
     visualReveal,
@@ -380,20 +450,13 @@ function MobileTree(
     topInsert,
     stageContent,
   } = props;
+  const isPractice = mode === 'practice';
 
   return (
-    <div className="flex h-[calc(100svh-41px)] flex-col bg-(--color-bg) md:hidden">
+    <div className="flex h-[calc(100svh-var(--app-bar-h))] flex-col bg-(--color-bg) md:hidden">
       {/* Top bar */}
       <div className="flex flex-shrink-0 items-center justify-between border-b border-(--color-rule) px-4 py-2.5">
-        <button
-          onClick={goHome}
-          aria-label="Home"
-          className="inline-flex h-9 w-9 items-center justify-center text-(--color-body)"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </button>
+        <AppMenu goTo={goTo} currentScreen={currentScreen} />
         <div className="inline-flex gap-2 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
           <span>{headerNumeral}</span>
           <span>·</span>
@@ -465,7 +528,8 @@ function MobileTree(
             value={hintValue(figure, h.key)}
             used={usedHints.includes(h.key)}
             disabled={outcome !== 'playing' || !figure}
-            onUse={() => onUseHint(h.key, h.cost)}
+            showCost={!isPractice}
+            onUse={() => onUseHint(h.key)}
           />
         ))}
       </div>
@@ -477,6 +541,8 @@ function MobileTree(
         style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
       >
         {feedback.kind !== 'neutral' && <CompactFeedback feedback={feedback} />}
+
+        <FigureLearnMore figure={figure} outcome={outcome} compact />
 
         <form onSubmit={onSubmit} className="flex gap-2">
           <input
@@ -529,12 +595,14 @@ function MobileHintChip({
   value,
   used,
   disabled,
+  showCost,
   onUse,
 }: {
   hint: { key: HintType; name: string; cost: number; icon: string };
   value: string;
   used: boolean;
   disabled: boolean;
+  showCost: boolean;
   onUse: () => void;
 }) {
   return (
@@ -561,8 +629,10 @@ function MobileHintChip({
         <span style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic' }}>
           {value || '—'}
         </span>
-      ) : (
+      ) : showCost ? (
         <span className="font-mono text-[10px] text-(--color-muted)">−{hint.cost}</span>
+      ) : (
+        <span className="text-(--color-muted)">{hint.name}</span>
       )}
     </button>
   );
@@ -602,13 +672,15 @@ function DesktopTree(
   },
 ) {
   const {
+    mode,
     headerNumeral,
     headerLabel,
     subtitleLeft,
     hintsUsedCount,
     difficulty,
     onChangeDifficulty,
-    goHome,
+    goTo,
+    currentScreen,
     figure,
     reveal,
     visualReveal,
@@ -633,22 +705,16 @@ function DesktopTree(
     nextLabel,
     topInsert,
     stageContent,
+    practiceProgress,
   } = props;
+  const isPractice = mode === 'practice';
 
   return (
-    <div className="hidden h-[calc(100vh-41px)] flex-col bg-(--color-bg) md:flex">
+    <div className="hidden h-[calc(100vh-var(--app-bar-h))] flex-col bg-(--color-bg) md:flex">
       <div className="mx-auto flex w-full max-w-[1040px] flex-1 min-h-0 flex-col">
         {/* Top bar */}
         <div className="flex flex-shrink-0 items-center justify-between px-8 pb-3 pt-6">
-          <button
-            onClick={goHome}
-            className="inline-flex items-center gap-1.5 text-sm text-(--color-body) no-underline"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Home
-          </button>
+          <AppMenu goTo={goTo} currentScreen={currentScreen} />
           <div className="inline-flex gap-3.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
             <span>{headerNumeral}</span>
             <span className="hidden md:inline">·</span>
@@ -668,15 +734,20 @@ function DesktopTree(
 
         <div className="flex-shrink-0 border-t border-(--color-rule)" />
 
-        {topInsert && <div className="flex-shrink-0 px-8 pt-4">{topInsert}</div>}
+        {topInsert && (
+          <div className="flex-shrink-0 px-8 pb-4 pt-4">{topInsert}</div>
+        )}
 
         {/* Body grid */}
         <div className="grid flex-1 min-h-0 grid-cols-[1.25fr_1fr] gap-0">
-          {/* Left zone: title + stage + slider, as a 5-row grid so the stage
-              row picks up the remaining height (1fr) without hardcoded calc. */}
-          <div className="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] overflow-hidden border-r border-(--color-rule) px-8 pb-7 pt-7">
+          {/* Left zone: title + stage + slider. Content anchors to the
+              top of the column: title, subtitle, image, slider, caption
+              all stack with their natural spacing. The image is capped
+              so it never dominates on tall viewports. Any leftover
+              vertical space falls at the bottom of the column. */}
+          <div className="flex min-h-0 flex-col overflow-y-auto border-r border-(--color-rule) px-8 pb-7 pt-7">
             <h2
-              className="leading-tight"
+              className="flex-shrink-0 leading-tight"
               style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: 28,
@@ -688,28 +759,25 @@ function DesktopTree(
               People from{' '}
               <em className="font-normal italic text-(--color-amber)">History</em>
             </h2>
-            <div className="mt-1.5 text-sm text-(--color-muted)">
+            <div className="mt-1.5 flex-shrink-0 text-sm text-(--color-muted)">
               <span className="font-medium text-(--color-ink)">{subtitleLeft}</span>
               {' · '}
               {hintsUsedCount === 0 ? 'No hints used' : `${hintsUsedCount} hint${hintsUsedCount === 1 ? '' : 's'} used`}
             </div>
 
-            {/* Stage cell — flex-1 row. The container-type: size lets the inner
-                box use 100cqw / 100cqh to size itself to the smaller dimension
-                of this cell, so the square always fits no matter the viewport. */}
+            {/* Stage — capped so it doesn't dominate. Slider sits
+                immediately below with mt-3, no centering tricks. */}
             <div
-              className="mt-4 grid min-h-0 place-items-center"
-              style={{ containerType: 'size' }}
+              className="mt-4 aspect-square w-full self-center"
+              style={{ maxWidth: 'min(100%, 60vh)' }}
             >
-              <div
-                className="aspect-square"
-                style={{ width: 'min(100cqw, 100cqh)' }}
-              >
-                {stageContent}
-              </div>
+              {stageContent}
             </div>
 
-            <div className="mt-4 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+            <div
+              className="mt-1 grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 self-center"
+              style={{ maxWidth: 'min(100%, 60vh)' }}
+            >
               <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">Reveal</span>
               <input
                 type="range"
@@ -741,19 +809,40 @@ function DesktopTree(
                 {visualReveal}%
               </span>
             </div>
-            <div className="mt-2 text-xs text-(--color-muted)">
-              Drag to see more. <span className="text-(--color-ink)">Each +1% costs 1 point</span> from your potential.
+            <div
+              className="mt-2 w-full self-center text-xs text-(--color-muted)"
+              style={{ maxWidth: 'min(100%, 60vh)' }}
+            >
+              {isPractice ? (
+                <>Drag to see more. <span className="text-(--color-ink)">Tighter crops are sharper practice</span> — no points either way.</>
+              ) : (
+                <>Drag to see more. <span className="text-(--color-ink)">Each +1% costs 1 point</span> from your potential.</>
+              )}
             </div>
           </div>
 
           {/* Right zone: dossier — scrolls internally if content is taller than row */}
           <div className="min-h-0 overflow-y-auto bg-(--color-paper) px-8 pb-7 pt-7">
             <DossierHeader first>This round</DossierHeader>
-            <div className="mb-6 grid grid-cols-3 gap-2.5">
-              <StatTile label="Potential" value={`${potential}`} sub={`/${potentialMax}`} featured />
-              <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
-              <StatTile label={streakLabel} value={`${streak}`} />
-            </div>
+            {isPractice ? (
+              <div className="mb-6 grid grid-cols-2 gap-2.5">
+                <StatTile label={streakLabel} value={`${streak}`} pulse={pulse} featured />
+                <StatTile
+                  label="Figures seen"
+                  value={
+                    practiceProgress && practiceProgress.total > 0
+                      ? `${practiceProgress.seen} of ${practiceProgress.total}`
+                      : `${practiceProgress?.seen ?? 0}`
+                  }
+                />
+              </div>
+            ) : (
+              <div className="mb-6 grid grid-cols-3 gap-2.5">
+                <StatTile label="Score" value={`${potential}`} featured />
+                <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
+                <StatTile label={streakLabel} value={`${streak}`} />
+              </div>
+            )}
 
             <DossierHeader>Your guess</DossierHeader>
             <form onSubmit={onSubmit} className="mb-4 flex gap-2">
@@ -776,6 +865,8 @@ function DesktopTree(
 
             <FeedbackBox feedback={feedback} />
 
+            <FigureLearnMore figure={figure} outcome={outcome} />
+
             <div className="mt-5 md:mt-6">
               <div className="mb-2 flex items-baseline justify-between">
                 <DossierHeader className="!m-0">Hints</DossierHeader>
@@ -787,6 +878,7 @@ function DesktopTree(
                 figure={figure}
                 usedHints={usedHints}
                 disabled={outcome !== 'playing' || !figure}
+                showCost={!isPractice}
                 onUse={onUseHint}
               />
             </div>
@@ -898,13 +990,11 @@ function DossierHeader({
 function StatTile({
   label,
   value,
-  sub,
   featured,
   pulse,
 }: {
   label: string;
   value: string;
-  sub?: string;
   featured?: boolean;
   pulse?: boolean;
 }) {
@@ -935,16 +1025,6 @@ function StatTile({
         }}
       >
         {value}
-        {sub && (
-          <span
-            className={
-              'ml-0.5 text-xs font-normal ' +
-              (featured ? 'text-white/50' : 'text-(--color-muted)')
-            }
-          >
-            {sub}
-          </span>
-        )}
       </span>
     </div>
   );
@@ -954,12 +1034,14 @@ function HintsArea({
   figure,
   usedHints,
   disabled,
+  showCost,
   onUse,
 }: {
   figure: Figure;
   usedHints: HintType[];
   disabled: boolean;
-  onUse: (key: HintType, cost: number) => void;
+  showCost: boolean;
+  onUse: (key: HintType) => void;
 }) {
   return (
     <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
@@ -969,7 +1051,7 @@ function HintsArea({
         return (
           <button
             key={h.key}
-            onClick={() => onUse(h.key, h.cost)}
+            onClick={() => onUse(h.key)}
             disabled={disabled || used}
             className={
               'group flex w-full items-start gap-3 rounded-card border px-3 py-2.5 text-left transition-colors duration-150 ' +
@@ -1000,15 +1082,99 @@ function HintsArea({
                 >
                   {value || '—'}
                 </span>
-              ) : (
+              ) : showCost ? (
                 <span className="mt-0.5 block font-mono text-[10px] tracking-[0.04em] text-(--color-muted)">
                   −{h.cost} pts
+                </span>
+              ) : (
+                <span className="mt-0.5 block font-mono text-[10px] tracking-[0.04em] text-(--color-muted)">
+                  tap to reveal
                 </span>
               )}
             </span>
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// Wikipedia-backed bio shown after the figure is revealed (win or
+// give-up). Collapsed by default — surfaced as a single "About X" row
+// that the user expands when they want to read. `compact` tightens
+// padding for the mobile dock. `figure.id` keys the state so the
+// expansion resets between rounds.
+function FigureLearnMore({
+  figure,
+  outcome,
+  compact,
+}: {
+  figure: Figure;
+  outcome: Outcome;
+  compact?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    setExpanded(false);
+  }, [figure.id, outcome]);
+
+  if (outcome === 'playing') return null;
+  if (!figure.summary) return null;
+
+  return (
+    <div
+      className={
+        'rounded-card border border-(--color-rule) bg-(--color-paper) ' +
+        (compact ? 'mb-3' : 'mt-4')
+      }
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className={
+          'flex w-full items-center justify-between gap-3 text-left ' +
+          (compact ? 'px-3 py-2' : 'px-4 py-2.5')
+        }
+      >
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
+          About {figure.name}
+        </span>
+        <span
+          aria-hidden
+          className={
+            'inline-grid h-5 w-5 flex-shrink-0 place-items-center rounded-full text-(--color-amber) transition-transform duration-150 ' +
+            (expanded ? 'rotate-45' : '')
+          }
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </span>
+      </button>
+      {expanded && (
+        <div className={compact ? 'px-3 pb-2.5' : 'px-4 pb-3'}>
+          <p
+            className={
+              'text-(--color-body) ' +
+              (compact ? 'text-[13px] leading-[1.45]' : 'text-sm leading-[1.5]')
+            }
+          >
+            {figure.summary}
+          </p>
+          {figure.wikipedia_url && (
+            <a
+              href={figure.wikipedia_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-(--color-amber) no-underline"
+            >
+              Learn more on Wikipedia →
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* App-bar height. Screens reserve this much off the top via
+   h-[calc(100vh-var(--app-bar-h))]. Dev shows the ProtoNav switcher
+   (41px); production hides it (0px). App.tsx flips the value via
+   inline style on the root container. */
+:root {
+  --app-bar-h: 0px;
+}
+
 @theme {
   --color-bg: #f2e9d2;
   --color-paper: #f8f1de;
@@ -195,21 +203,28 @@ input[type="range"].pfh-slider:disabled::-webkit-slider-thumb {
 /* Floating glassmorphic nav pill. */
 .pfh-nav-wrap {
   position: sticky;
-  top: 14px;
+  top: 10px;
   z-index: 60;
-  padding: 0 24px;
-  margin-top: 14px;
+  padding: 0 12px;
+  margin-top: 10px;
   pointer-events: none;
+}
+@media (min-width: 768px) {
+  .pfh-nav-wrap {
+    top: 14px;
+    padding: 0 24px;
+    margin-top: 14px;
+  }
 }
 .pfh-nav-pill {
   pointer-events: auto;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 8px 8px 8px 18px;
+  padding: 6px 6px 6px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.42);
   backdrop-filter: blur(22px) saturate(180%);
@@ -224,6 +239,12 @@ input[type="range"].pfh-slider:disabled::-webkit-slider-thumb {
     background-color 200ms ease,
     box-shadow 200ms ease,
     border-color 200ms ease;
+}
+@media (min-width: 768px) {
+  .pfh-nav-pill {
+    padding: 8px 8px 8px 18px;
+    gap: 24px;
+  }
 }
 .pfh-nav-pill.scrolled {
   background: rgba(255, 255, 255, 0.62);
@@ -259,6 +280,50 @@ input[type="range"].pfh-slider:disabled::-webkit-slider-thumb {
 }
 .pfh-pulse {
   animation: pfh-pulse-amber 1.2s ease forwards;
+}
+
+/* Win halo — radial amber glow behind the portrait stage, fades in
+   and back out over ~1.5s. Editorial — no movement, just opacity. */
+@keyframes pfh-halo {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.pfh-halo {
+  animation: pfh-halo 1.5s ease forwards;
+  background: radial-gradient(
+    circle at center,
+    var(--color-amber-soft-2) 0%,
+    var(--color-amber-soft) 40%,
+    transparent 70%
+  );
+}
+
+/* Win celebration — phrase + points appearing center-screen on a
+   correct guess. Opacity-only, no bounce; 200ms in, 1s linger, 600ms
+   out. Mounted briefly via React state; unmounts after the animation. */
+@keyframes pfh-celebrate {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.pfh-celebrate {
+  animation: pfh-celebrate 1.8s ease forwards;
 }
 
 @theme inline {

@@ -16,4 +16,6 @@ export const sampleFigure: Figure & { image_url: string } = {
   first_letter: 'P',
   enabled: true,
   created_at: new Date(0).toISOString(),
+  summary: '',
+  wikipedia_url: null,
 };

@@ -16,4 +16,8 @@ export type Figure = {
   first_letter: string;
   enabled: boolean;
   created_at: string;
+  // Wikipedia-derived bio shown in the reveal panel. `summary` is the
+  // first paragraph; `wikipedia_url` is the canonical article URL.
+  summary: string;
+  wikipedia_url: string | null;
 };

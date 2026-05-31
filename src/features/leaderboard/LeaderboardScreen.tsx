@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { AppMenu } from '@/components/AppMenu';
 import { LeaderboardView, type Board } from '@/features/leaderboard/LeaderboardView';
 import { getCurrentSessionUserId, getTopRuns, type Run } from '@/lib/runs';
 import type { Screen } from '@/components/ProtoNav';
@@ -37,19 +38,10 @@ export function LeaderboardScreen({ goTo }: LeaderboardScreenProps) {
   }, []);
 
   return (
-    <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[640px] px-6 pb-24 pt-12">
+    <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
+      <div className="mx-auto max-w-[640px] px-6 pb-24 pt-12 md:max-w-[1040px] md:px-10 md:pt-16">
         <div className="mb-10">
-          <a
-            href="#home"
-            onClick={(e) => {
-              e.preventDefault();
-              goTo('landing');
-            }}
-            className="text-sm text-(--color-muted) no-underline"
-          >
-            ← Home
-          </a>
+          <AppMenu goTo={goTo} currentScreen="leaderboard" />
         </div>
 
         <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-muted)">

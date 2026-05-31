@@ -106,7 +106,7 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
       setOutcome('won');
       setFeedback({
         kind: 'success',
-        text: `Correct! That's ${figure.name}. +${earned} points.`,
+        text: `That's ${figure.name}. +${earned} points.`,
       });
       setPulse(true);
       setTimeout(() => setPulse(false), 1300);
@@ -215,7 +215,8 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
       hintsUsedCount={usedHints.length}
       difficulty={tier}
       onChangeDifficulty={() => goTo('play-setup')}
-      goHome={() => goTo('landing')}
+      goTo={goTo}
+      currentScreen="challenge"
       loading={loading && !figure}
       error={error && !figure ? error : null}
       empty={!loading && !error && figures.length === 0}
@@ -266,6 +267,8 @@ const EMPTY_FIGURE: Figure = {
   first_letter: '',
   enabled: true,
   created_at: new Date(0).toISOString(),
+  summary: '',
+  wikipedia_url: null,
 };
 
 function ProgressDots({

@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 
+import { AppMenu } from '@/components/AppMenu';
 import { ShareCard } from '@/components/ShareCard';
+import { SignUpNudge } from '@/components/SignUpNudge';
+import { renderChallengeShareImage } from '@/lib/renderShareImage';
 import { LeaderboardView, type Board } from '@/features/leaderboard/LeaderboardView';
 import {
   getCurrentSessionUserId,
@@ -133,7 +136,7 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
 
   if (!run) {
     return (
-      <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
+      <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
         <div className="mx-auto max-w-[440px] px-6 pb-24 pt-12 text-center">
           <p className="mb-6 text-sm text-(--color-muted)">
             No completed challenge yet.
@@ -155,6 +158,7 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
 
   const correct = run.results.filter((r) => r.outcome === 'won').length;
   const shareText = buildShareText(run);
+  const getShareImage = useCallback(() => renderChallengeShareImage(run), [run]);
   const dateLabel = new Date(run.finishedAt).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -190,19 +194,10 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
   };
 
   return (
-    <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[480px] px-6 pb-24 pt-12">
+    <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
+      <div className="mx-auto max-w-[480px] px-6 pb-24 pt-12 md:max-w-[960px] md:px-10 md:pt-16">
         <div className="mb-10">
-          <a
-            href="#home"
-            onClick={(e) => {
-              e.preventDefault();
-              goTo('landing');
-            }}
-            className="text-sm text-(--color-muted) no-underline"
-          >
-            ← Home
-          </a>
+          <AppMenu goTo={goTo} currentScreen="challenge-end" />
         </div>
 
         <div className="mb-3.5 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
@@ -233,107 +228,118 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
           {correct} of {run.results.length} correct
         </div>
 
-        <div
-          aria-label={`Round outcomes: ${correct} of ${run.results.length}`}
-          className="mb-2 grid gap-1.5"
-          style={{ gridTemplateColumns: `repeat(${run.results.length}, 1fr)` }}
-        >
-          {run.results.map((r, i) => (
-            <div
-              key={i}
-              aria-hidden
-              className="aspect-square rounded-sm border"
-              style={{
-                background:
-                  r.outcome === 'won' ? 'var(--color-amber-soft-2)' : 'transparent',
-                borderColor:
-                  r.outcome === 'won'
-                    ? 'var(--color-amber-soft-2)'
-                    : 'var(--color-hairline-strong)',
-              }}
-            />
-          ))}
+        <div className="mx-auto mb-2 md:max-w-[640px]">
+          <div
+            aria-label={`Round outcomes: ${correct} of ${run.results.length}`}
+            className="grid gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${run.results.length}, 1fr)` }}
+          >
+            {run.results.map((r, i) => (
+              <div
+                key={i}
+                aria-hidden
+                className="aspect-square rounded-sm border"
+                style={{
+                  background:
+                    r.outcome === 'won' ? 'var(--color-amber-soft-2)' : 'transparent',
+                  borderColor:
+                    r.outcome === 'won'
+                      ? 'var(--color-amber-soft-2)'
+                      : 'var(--color-hairline-strong)',
+                }}
+              />
+            ))}
+          </div>
         </div>
         <div className="mb-9 text-center font-display text-sm italic text-(--color-muted)">
           {run.results.map((r) => DIFFICULTY_LABEL[r.difficulty]).join(' · ')}
         </div>
 
-        <RoundsTable results={run.results} />
+        {/* Body — before submit: two columns on desktop (rounds left, submit + share right).
+            After submit: leaderboard full-width (uses its own internal two-column desktop layout),
+            then a row of rounds table + share card side-by-side. */}
+        {!isSubmitted ? (
+          <div className="md:grid md:grid-cols-[1.1fr_1fr] md:gap-8">
+            <div>
+              <RoundsTable results={run.results} />
+            </div>
 
-        {/* Leaderboard submission / display */}
-        <div className="mt-10">
-          {!isSubmitted ? (
-            <form onSubmit={handleSubmit}>
-              <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
-                Post to the leaderboard
-              </div>
-              <p className="mb-4 text-sm text-(--color-muted)">
-                Pick a nickname — it'll stick on this device for future runs.
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Your nickname"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  maxLength={32}
-                  disabled={isSubmitting}
-                  className="min-h-11 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) placeholder:text-(--color-muted) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2]"
-                />
-                <button
-                  type="submit"
-                  disabled={
-                    isSubmitting ||
-                    nickname.trim().length === 0 ||
-                    (!!turnstileSiteKey && !currentUserId && !captchaToken)
-                  }
-                  className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isSubmitting
-                    ? 'Posting…'
-                    : turnstileSiteKey && !currentUserId && !captchaToken
-                      ? 'Verifying…'
-                      : 'Submit'}
-                </button>
-              </div>
-              {/* Cloudflare Turnstile — produces a token required only for
-                  first-time anon sign-in. Returning users with a session
-                  skip captcha entirely. */}
-              {turnstileSiteKey && !currentUserId && (
-                <div className="mt-3 flex items-center gap-3">
-                  <Turnstile
-                    ref={turnstileRef}
-                    siteKey={turnstileSiteKey}
-                    onSuccess={setCaptchaToken}
-                    onExpire={() => setCaptchaToken(null)}
-                    onError={() => setCaptchaToken(null)}
-                    options={{
-                      appearance: 'always',
-                      refreshExpired: 'auto',
-                      theme: 'light',
-                      size: 'compact',
-                    }}
+            <div className="mt-10 md:mt-0">
+              <form onSubmit={handleSubmit}>
+                <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
+                  Post to the leaderboard
+                </div>
+                <p className="mb-4 text-sm text-(--color-muted)">
+                  Pick a nickname — it'll stick on this device for future runs.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Your nickname"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    maxLength={32}
+                    disabled={isSubmitting}
+                    className="min-h-11 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) placeholder:text-(--color-muted) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2]"
                   />
-                  {!captchaToken && (
-                    <span className="text-xs text-(--color-muted)">
-                      Verifying you're human…
-                    </span>
-                  )}
+                  <button
+                    type="submit"
+                    disabled={
+                      isSubmitting ||
+                      nickname.trim().length === 0 ||
+                      (!!turnstileSiteKey && !currentUserId && !captchaToken)
+                    }
+                    className="inline-flex min-h-11 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSubmitting
+                      ? 'Posting…'
+                      : turnstileSiteKey && !currentUserId && !captchaToken
+                        ? 'Verifying…'
+                        : 'Submit'}
+                  </button>
                 </div>
-              )}
-              {!turnstileSiteKey && (
-                <div className="mt-3 rounded border border-(--color-error-border) bg-(--color-error-bg) px-3 py-2 text-xs text-(--color-error)">
-                  Turnstile site key not set. Restart <code>npm run dev</code> after
-                  adding <code>VITE_TURNSTILE_SITE_KEY</code> to <code>.env.local</code>.
-                </div>
-              )}
-              {submitError && (
-                <div className="mt-3 rounded border border-(--color-error-border) bg-(--color-error-bg) px-3 py-2 text-xs text-(--color-error)">
-                  {submitError}
-                </div>
-              )}
-            </form>
-          ) : (
+                {turnstileSiteKey && !currentUserId && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <Turnstile
+                      ref={turnstileRef}
+                      siteKey={turnstileSiteKey}
+                      onSuccess={setCaptchaToken}
+                      onExpire={() => setCaptchaToken(null)}
+                      onError={() => setCaptchaToken(null)}
+                      options={{
+                        appearance: 'always',
+                        refreshExpired: 'auto',
+                        theme: 'light',
+                        size: 'compact',
+                      }}
+                    />
+                    {!captchaToken && (
+                      <span className="text-xs text-(--color-muted)">
+                        Verifying you're human…
+                      </span>
+                    )}
+                  </div>
+                )}
+                {!turnstileSiteKey && (
+                  <div className="mt-3 rounded border border-(--color-error-border) bg-(--color-error-bg) px-3 py-2 text-xs text-(--color-error)">
+                    Turnstile site key not set. Restart <code>npm run dev</code> after
+                    adding <code>VITE_TURNSTILE_SITE_KEY</code> to <code>.env.local</code>.
+                  </div>
+                )}
+                {submitError && (
+                  <div className="mt-3 rounded border border-(--color-error-border) bg-(--color-error-bg) px-3 py-2 text-xs text-(--color-error)">
+                    {submitError}
+                  </div>
+                )}
+              </form>
+
+              <div className="mt-8">
+                <ShareCard text={shareText} getImage={getShareImage} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
             <LeaderboardView
               activeBoard={activeBoard}
               onSwitchBoard={setActiveBoard}
@@ -342,14 +348,27 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
               error={boardError}
               currentUserId={currentUserId}
             />
-          )}
-        </div>
+            <div className="mt-10 md:grid md:grid-cols-[1.1fr_1fr] md:gap-8">
+              <div>
+                <RoundsTable results={run.results} />
+              </div>
+              <div className="mt-10 md:mt-0">
+                <ShareCard text={shareText} getImage={getShareImage} />
+              </div>
+            </div>
 
-        <div className="mb-10 mt-8">
-          <ShareCard text={shareText} />
-        </div>
+            <div className="mt-10">
+              <SignUpNudge
+                goTo={goTo}
+                eyebrow="Keep your runs"
+                headline="Sign in so your leaderboard runs live with you."
+                body="Right now they're tied to this browser. Link your email and you'll see your history (and submit runs) from any device."
+              />
+            </div>
+          </>
+        )}
 
-        <div className="pfh-ornament mb-6">
+        <div className="pfh-ornament mb-6 mt-10">
           <div className="rule" />
           <div className="dot" />
           <div className="rule" />

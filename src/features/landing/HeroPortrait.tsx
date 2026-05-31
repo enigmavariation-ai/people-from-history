@@ -1,37 +1,79 @@
-export function HeroPortrait() {
-  const focal = { x: 50, y: 36 };
-  const boxFrac = 0.3;
-  const half = (boxFrac * 100) / 2;
-  const left = focal.x - half;
-  const right = focal.x + half;
-  const top = focal.y - half;
-  const bottom = focal.y + half;
+// Landing hero portrait. Shows Jacques-Louis David's "The Emperor
+// Napoleon in His Study at the Tuileries" (1812) with the game's
+// reveal mechanic baked in as a visual metaphor: the area around the
+// face is dimmed to ~30% opacity while the face itself is rendered at
+// full opacity inside a hairline-bordered rectangle. Communicates the
+// game in a single glance — "we hide most of the portrait; you guess
+// from the focal area".
+//
+// Image is served from Wikimedia Commons (public domain). Aspect
+// ratio matches the painting's natural 5/8.
 
+const IMAGE_SRC =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/The_Emperor_Napoleon_in_His_Study_at_the_Tuileries%2C_by_Jacques-Louis_David_%281812%29_-_National_Gallery_of_Art_%28Samuel_H._Kress_Foundation%29_-_2.jpg/960px-The_Emperor_Napoleon_in_His_Study_at_the_Tuileries%2C_by_Jacques-Louis_David_%281812%29_-_National_Gallery_of_Art_%28Samuel_H._Kress_Foundation%29_-_2.jpg';
+
+// Container is a 1:1 square. The painting (natural ratio 5/8) gets
+// cropped via `object-fit: cover` + `object-position: 50% 0%`, which
+// anchors the top edge — so the visible area is the upper ~61% of the
+// painting (head + torso), with the legs out of frame.
+//
+// Focal rectangle around Napoleon's face, expressed in *container*
+// coordinates (after the top-anchored crop). The face sits at y≈0.18
+// of the original painting; that maps to y≈0.295 in the cropped view.
+const FOCAL = { x: 0.45, y: 0.30 };
+const BOX = 0.22; // side length of the focal rectangle
+const HALF = BOX / 2;
+const LEFT = (FOCAL.x - HALF) * 100;
+const RIGHT = (FOCAL.x + HALF) * 100;
+const TOP = (FOCAL.y - HALF) * 100;
+const BOTTOM = (FOCAL.y + HALF) * 100;
+
+const OBJECT_POSITION = '50% 0%';
+
+export function HeroPortrait() {
   return (
     <div
       className="pfh-hero-portrait relative mx-auto w-full overflow-hidden bg-(--color-sepia-bg)"
-      style={{ aspectRatio: '5 / 6', maxHeight: 620, borderRadius: 6 }}
+      style={{ aspectRatio: '1 / 1', maxHeight: 620, borderRadius: 6 }}
     >
-      <PainterlyPortraitArt />
+      {/* Base layer — top portion of the painting dimmed so the
+          surrounding context (medals, sash, clock, posture) reads as
+          backdrop while the face stays in focus. */}
+      <img
+        src={IMAGE_SRC}
+        alt="The Emperor Napoleon in His Study at the Tuileries, by Jacques-Louis David, 1812"
+        loading="eager"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ opacity: 0.3, objectPosition: OBJECT_POSITION }}
+      />
 
-      <div
+      {/* Focused layer — same image at full opacity, clipped to the
+          rectangle around the face. */}
+      <img
+        src={IMAGE_SRC}
+        alt=""
         aria-hidden
-        className="absolute inset-0"
+        loading="eager"
+        decoding="async"
+        className="absolute inset-0 h-full w-full object-cover"
         style={{
-          background:
-            'linear-gradient(to right, transparent 49.7%, rgba(255,255,255,0.04) 49.85%, rgba(255,255,255,0.04) 50.15%, transparent 50.3%)',
-          mixBlendMode: 'overlay',
+          objectPosition: OBJECT_POSITION,
+          clipPath: `polygon(${LEFT}% ${TOP}%, ${RIGHT}% ${TOP}%, ${RIGHT}% ${BOTTOM}%, ${LEFT}% ${BOTTOM}%)`,
         }}
       />
 
+      {/* Reveal-rectangle border — same hairline treatment as the
+          in-game CropStage so the landing previews the visual
+          language. */}
       <div
         aria-hidden
         className="pointer-events-none absolute box-border rounded-[2px] border-2"
         style={{
-          left: `${left}%`,
-          top: `${top}%`,
-          width: `${right - left}%`,
-          height: `${bottom - top}%`,
+          left: `${LEFT}%`,
+          top: `${TOP}%`,
+          width: `${RIGHT - LEFT}%`,
+          height: `${BOTTOM - TOP}%`,
           borderColor: 'rgba(255,255,255,0.95)',
           boxShadow:
             '0 0 0 1px rgba(0,0,0,0.15), 0 6px 24px rgba(0,0,0,0.18)',
@@ -78,114 +120,11 @@ export function HeroPortrait() {
           left: 14,
           fontSize: 10,
           letterSpacing: '0.1em',
-          color: 'rgba(255,255,255,0.55)',
+          color: 'rgba(255,255,255,0.7)',
         }}
       >
-        Placeholder · classical oil portrait
+        Napoleon · J.-L. David, 1812
       </div>
-    </div>
-  );
-}
-
-function PainterlyPortraitArt() {
-  const grain = 'radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1.4px)';
-  return (
-    <div
-      aria-hidden
-      className="absolute inset-0"
-      style={{
-        background:
-          'radial-gradient(ellipse at 50% 30%, #E4D3AE 0%, #C7A876 45%, #6F5435 100%)',
-      }}
-    >
-      <div
-        className="absolute"
-        style={{
-          left: '0%',
-          right: '0%',
-          bottom: '-8%',
-          height: '62%',
-          background:
-            'radial-gradient(ellipse at 50% 0%, #2E2616 0%, #1B1610 70%)',
-          borderRadius: '50% 50% 0 0 / 60% 60% 0 0',
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          left: '30%',
-          right: '30%',
-          bottom: '0%',
-          height: '28%',
-          background:
-            'linear-gradient(180deg, rgba(245,232,200,0) 0%, rgba(245,232,200,0.16) 60%, rgba(245,232,200,0.04) 100%)',
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          left: '50%',
-          top: '52%',
-          width: '16%',
-          height: '16%',
-          transform: 'translateX(-50%)',
-          background: 'linear-gradient(180deg, #BE9866 0%, #8A6940 100%)',
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          left: '50%',
-          top: '16%',
-          width: '46%',
-          height: '46%',
-          transform: 'translateX(-50%)',
-          borderRadius: '48% 48% 44% 44% / 54% 54% 46% 46%',
-          background:
-            'radial-gradient(ellipse at 42% 38%, #E4C691 0%, #C39E62 45%, #7E5A2C 100%)',
-          boxShadow:
-            'inset -14px -14px 24px rgba(0,0,0,0.30), inset 10px 12px 22px rgba(255,255,255,0.12)',
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          left: '50%',
-          top: '12%',
-          width: '50%',
-          height: '22%',
-          transform: 'translateX(-50%)',
-          borderRadius: '50% 50% 30% 30% / 80% 80% 30% 30%',
-          background:
-            'radial-gradient(ellipse at 50% 80%, #3A2C18 0%, #25180B 80%)',
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          left: '32%',
-          right: '32%',
-          top: '32%',
-          height: 1,
-          background: 'rgba(0,0,0,0.10)',
-        }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: grain,
-          backgroundSize: '5px 5px',
-          opacity: 0.45,
-          mixBlendMode: 'multiply',
-        }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse at 50% 35%, transparent 45%, rgba(20,12,6,0.55) 110%)',
-        }}
-      />
     </div>
   );
 }

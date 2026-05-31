@@ -12,6 +12,7 @@ import {
 } from '@/lib/daily';
 import { matches } from '@/lib/matching';
 import { scoreGuess } from '@/lib/scoring';
+import { pushDailyPlay } from '@/lib/syncState';
 import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
 import type { Difficulty, Figure } from '@/types/figure';
@@ -50,6 +51,8 @@ const EMPTY_FIGURE: Figure = {
   first_letter: '',
   enabled: true,
   created_at: new Date(0).toISOString(),
+  summary: '',
+  wikipedia_url: null,
 };
 
 export function DailyGame({ goTo }: DailyGameProps) {
@@ -90,7 +93,7 @@ export function DailyGame({ goTo }: DailyGameProps) {
       setOutcome('won');
       setFeedback({
         kind: 'success',
-        text: `Correct! That's ${figure.name}.`,
+        text: `That's ${figure.name}.`,
       });
       setPulse(true);
       setTimeout(() => setPulse(false), 1300);
@@ -127,7 +130,7 @@ export function DailyGame({ goTo }: DailyGameProps) {
     const won = outcome === 'won';
     const previousPlay = loadLastDailyPlay();
     updateDailyStreak(won, today, previousPlay);
-    saveLastDailyPlay({
+    const play = {
       date: today,
       won,
       score: won ? scoreGuess(reveal, usedHints) : 0,
@@ -135,7 +138,9 @@ export function DailyGame({ goTo }: DailyGameProps) {
       hintsUsed: usedHints,
       figureId: figure.id,
       figureName: figure.name,
-    });
+    };
+    saveLastDailyPlay(play);
+    pushDailyPlay(play); // no-op for anon users
     goTo('daily');
   };
 
@@ -160,7 +165,8 @@ export function DailyGame({ goTo }: DailyGameProps) {
       // Daily figure is locked — clicking the difficulty pill just
       // takes you home rather than letting you change anything.
       onChangeDifficulty={() => goTo('landing')}
-      goHome={() => goTo('landing')}
+      goTo={goTo}
+      currentScreen="daily-game"
       loading={loading && !figure}
       error={error && !figure ? error : null}
       empty={!loading && !error && figures.length === 0}

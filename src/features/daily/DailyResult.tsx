@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { AppMenu } from '@/components/AppMenu';
 import { ShareCard } from '@/components/ShareCard';
+import { SignUpNudge } from '@/components/SignUpNudge';
 import {
   getDailyStreak,
   loadLastDailyPlay,
   todayIsoDate,
   type DailyPlay,
 } from '@/lib/daily';
+import { renderDailyShareImage } from '@/lib/renderShareImage';
 import type { Screen } from '@/components/ProtoNav';
 
 type DailyResultProps = { goTo: (s: Screen) => void };
@@ -31,15 +34,40 @@ function buildShareText(play: DailyPlay, streak: number): string {
   return [`People from History · ${date}`, middle, grid, streakLine].join('\n');
 }
 
+// Time until the next UTC-midnight puzzle drop, formatted as a short
+// human string ("5h 24m", "27m", "less than a minute"). Recomputed by
+// the caller's useEffect tick.
+function formatTimeUntilNextPuzzle(now: Date): string {
+  const next = new Date(now);
+  next.setUTCHours(24, 0, 0, 0); // next UTC midnight
+  const ms = next.getTime() - now.getTime();
+  if (ms <= 60_000) return 'less than a minute';
+  const totalMinutes = Math.floor(ms / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
+}
+
 export function DailyResult({ goTo }: DailyResultProps) {
   const play = useMemo(() => loadLastDailyPlay(), []);
   const streak = useMemo(() => getDailyStreak(), []);
   const today = useMemo(() => todayIsoDate(), []);
 
+  // Live countdown to the next puzzle. Updates every minute; that's
+  // plenty since we render only hours+minutes.
+  const [timeLeft, setTimeLeft] = useState(() => formatTimeUntilNextPuzzle(new Date()));
+  useEffect(() => {
+    const tick = () => setTimeLeft(formatTimeUntilNextPuzzle(new Date()));
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   // No play at all, or last play wasn't today — prompt to play.
   if (!play || play.date !== today) {
     return (
-      <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
+      <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
         <div className="mx-auto max-w-[440px] px-6 pb-24 pt-12 text-center">
           <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
             § Today's puzzle
@@ -88,21 +116,16 @@ export function DailyResult({ goTo }: DailyResultProps) {
   );
 
   const shareText = buildShareText(play, streak);
+  const getShareImage = useCallback(
+    () => renderDailyShareImage(play, streak),
+    [play, streak],
+  );
 
   return (
-    <div className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[440px] px-6 pb-24 pt-12">
+    <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
+      <div className="mx-auto max-w-[440px] px-6 pb-24 pt-12 md:max-w-[860px] md:px-10 md:pt-16">
         <div className="mb-10">
-          <a
-            href="#home"
-            onClick={(e) => {
-              e.preventDefault();
-              goTo('landing');
-            }}
-            className="text-sm text-(--color-muted) no-underline"
-          >
-            ← Home
-          </a>
+          <AppMenu goTo={goTo} currentScreen="daily" />
         </div>
 
         <div className="mb-3.5 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
@@ -151,51 +174,86 @@ export function DailyResult({ goTo }: DailyResultProps) {
             : 'No points today. Streak reset.'}
         </div>
 
-        <div
-          aria-label={
-            won
-              ? `Solved at ${play.reveal}% reveal, ${filled} of 10 squares filled`
-              : 'Gave up'
-          }
-          className="mb-3.5 grid gap-1.5"
-          style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}
-        >
-          {squares.map((on, i) => (
+        {/* Body — single column on mobile, two columns on desktop.
+            Left: outcome grid + caption; Right: share card. */}
+        <div className="md:grid md:grid-cols-2 md:items-start md:gap-10">
+          <div>
             <div
-              key={i}
-              aria-hidden
-              className="aspect-square rounded-sm border"
-              style={{
-                background: !won
-                  ? 'var(--color-hairline-strong)'
-                  : on
-                    ? 'var(--color-amber-soft-2)'
-                    : 'transparent',
-                borderColor: !won
-                  ? 'var(--color-hairline-strong)'
-                  : on
-                    ? 'var(--color-amber-soft-2)'
-                    : 'var(--color-hairline)',
-              }}
+              aria-label={
+                won
+                  ? `Solved at ${play.reveal}% reveal, ${filled} of 10 squares filled`
+                  : 'Gave up'
+              }
+              className="mb-3.5 grid gap-1.5"
+              style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}
+            >
+              {squares.map((on, i) => (
+                <div
+                  key={i}
+                  aria-hidden
+                  className="aspect-square rounded-sm border"
+                  style={{
+                    background: !won
+                      ? 'var(--color-hairline-strong)'
+                      : on
+                        ? 'var(--color-amber-soft-2)'
+                        : 'transparent',
+                    borderColor: !won
+                      ? 'var(--color-hairline-strong)'
+                      : on
+                        ? 'var(--color-amber-soft-2)'
+                        : 'var(--color-hairline)',
+                  }}
+                />
+              ))}
+            </div>
+            <div className="text-center font-display text-sm italic text-(--color-muted)">
+              {won ? `${filled} of 10 increments shaded.` : 'No solve today.'}
+            </div>
+          </div>
+
+          <div className="mt-10 md:mt-0">
+            <ShareCard text={shareText} getImage={getShareImage} />
+          </div>
+        </div>
+
+        {won && (
+          <div className="mt-10">
+            <SignUpNudge
+              goTo={goTo}
+              eyebrow="Don't lose this"
+              headline={
+                streak >= 2
+                  ? `${streak}-day streak — keep it safe across devices.`
+                  : 'Save your daily streak across devices.'
+              }
+              body="One tap. Your nickname, plays, and streak come with you to your phone, laptop, anywhere."
             />
-          ))}
-        </div>
-        <div className="mb-9 text-center font-display text-sm italic text-(--color-muted)">
-          {won ? `${filled} of 10 increments shaded.` : 'No solve today.'}
-        </div>
+          </div>
+        )}
 
-        <div className="mb-10">
-          <ShareCard text={shareText} />
-        </div>
-
-        <div className="pfh-ornament mb-6">
+        <div className="pfh-ornament mb-6 mt-10">
           <div className="rule" />
           <div className="dot" />
           <div className="rule" />
         </div>
 
-        <div className="mb-3.5 text-center text-sm text-(--color-muted)">
-          Come back tomorrow for a new puzzle.
+        <div className="mb-3.5 text-center">
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
+            Next puzzle in
+          </div>
+          <div
+            className="tabular-nums leading-none"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 28,
+              fontWeight: 500,
+              color: 'var(--color-ink)',
+              letterSpacing: '-0.012em',
+            }}
+          >
+            {timeLeft}
+          </div>
         </div>
 
         <div className="text-center">

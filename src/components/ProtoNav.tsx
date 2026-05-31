@@ -7,6 +7,9 @@ export const SCREENS = [
   { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'daily-game', label: 'Daily' },
   { id: 'daily', label: 'Daily result' },
+  { id: 'login', label: 'Sign in' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'audit', label: 'Audit' },
 ] as const;
 
 export type Screen = (typeof SCREENS)[number]['id'];

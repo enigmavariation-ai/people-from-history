@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type ShareCardProps = {
   text: string;
@@ -6,41 +6,92 @@ type ShareCardProps = {
   // it as the message subject (Mail, Messages, etc.).
   title?: string;
   buttonLabel?: string;
+  // Optional: render a PNG to share alongside the text. Called lazily
+  // on Share-button click; if it resolves to a Blob and the platform
+  // supports file sharing, the image is attached (way more viral on
+  // Instagram / iMessage / Twitter). Errors fall through to text.
+  getImage?: () => Promise<Blob>;
 };
 
-type ShareOutcome = 'idle' | 'copied' | 'failed';
+type ShareOutcome = 'idle' | 'copied' | 'downloaded' | 'failed';
 
-// Preview-first share card. The preview is always visible (so users see
-// exactly what they'll send before they share), and a single Share
-// button opens the OS-native share sheet via the Web Share API. Browsers
-// without Web Share (Firefox desktop, mostly) fall back to copying the
-// text to the clipboard and showing a brief acknowledgement.
+// Preview-first share card. The text preview is always visible (so
+// users see what they'll send before they share). A single Share
+// button opens the OS-native share sheet via Web Share. When
+// `getImage` is provided AND the platform supports sharing files
+// (most mobile browsers do), a rendered PNG is attached. Otherwise we
+// fall back to text-only share, then clipboard, then file download.
 export function ShareCard({
   text,
   title = 'People from History',
   buttonLabel = 'Share',
+  getImage,
 }: ShareCardProps) {
   const [outcome, setOutcome] = useState<ShareOutcome>('idle');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Render the preview image once on mount (and whenever text changes
+  // so a new round refreshes). Object URLs are revoked on cleanup.
+  useEffect(() => {
+    if (!getImage) return;
+    let cancelled = false;
+    let url: string | null = null;
+    getImage()
+      .then((blob) => {
+        if (cancelled) return;
+        url = URL.createObjectURL(blob);
+        setPreviewUrl(url);
+      })
+      .catch(() => {
+        // Silently skip preview — share button still works text-only.
+      });
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+      setPreviewUrl(null);
+    };
+  }, [getImage, text]);
 
   const handleShare = async () => {
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    // Try image+text first when both are available.
+    let file: File | null = null;
+    if (getImage) {
       try {
-        await navigator.share({ text, title });
-        return;
-      } catch (e) {
-        // AbortError = user cancelled the share sheet. Treat as no-op
-        // (don't fall back to clipboard or they'll get an unsolicited
-        // copy after dismissing the sheet).
-        if (e instanceof Error && e.name === 'AbortError') return;
-        // Any other share error: fall through to clipboard.
+        const blob = await getImage();
+        file = new File([blob], 'people-from-history.png', { type: 'image/png' });
+      } catch {
+        // Fall through to text-only share.
       }
     }
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        if (file && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], text, title });
+        } else {
+          await navigator.share({ text, title });
+        }
+        return;
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return;
+        // Any other share error: fall through to clipboard / download.
+      }
+    }
+
+    // No Web Share — try clipboard (text). If we have an image too,
+    // also offer it as a download since clipboard images aren't
+    // universally supported.
     try {
       await navigator.clipboard.writeText(text);
-      setOutcome('copied');
-      setTimeout(() => setOutcome('idle'), 2500);
+      if (file) {
+        downloadFile(file);
+        setOutcome('downloaded');
+        setTimeout(() => setOutcome('idle'), 3000);
+      } else {
+        setOutcome('copied');
+        setTimeout(() => setOutcome('idle'), 2500);
+      }
     } catch {
-      // Legacy clipboard fallback for the very-old browser case.
       try {
         const ta = document.createElement('textarea');
         ta.value = text;
@@ -67,12 +118,20 @@ export function ShareCard({
           Preview
         </div>
       </div>
-      <pre
-        aria-label="Share preview"
-        className="mb-3 whitespace-pre-wrap break-words rounded-card border border-(--color-rule) bg-(--color-paper) px-5 py-4 font-mono text-[13px] leading-[1.6] text-(--color-body)"
-      >
-        {text}
-      </pre>
+      {previewUrl ? (
+        <img
+          src={previewUrl}
+          alt="Share preview"
+          className="mb-3 block w-full rounded-card border border-(--color-rule) bg-(--color-paper)"
+        />
+      ) : (
+        <pre
+          aria-label="Share preview"
+          className="mb-3 whitespace-pre-wrap break-words rounded-card border border-(--color-rule) bg-(--color-paper) px-5 py-4 font-mono text-[13px] leading-[1.6] text-(--color-body)"
+        >
+          {text}
+        </pre>
+      )}
       <button
         onClick={handleShare}
         className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
@@ -98,11 +157,28 @@ export function ShareCard({
           Copied to clipboard — paste it wherever you like.
         </div>
       )}
+      {outcome === 'downloaded' && (
+        <div className="mt-2 text-center text-xs text-(--color-muted)">
+          Image downloaded · text copied to clipboard.
+        </div>
+      )}
       {outcome === 'failed' && (
         <div className="mt-2 text-center text-xs text-(--color-error)">
-          Couldn't copy automatically. Long-press the preview to copy manually.
+          Couldn't share automatically. Long-press the preview to save.
         </div>
       )}
     </div>
   );
+}
+
+function downloadFile(file: File) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Revoke after a tick so the click handler has time to dispatch.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }

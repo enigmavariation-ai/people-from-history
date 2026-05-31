@@ -16,8 +16,11 @@ export function CropStage({ imageUrl, focal, startSize, revealPct }: CropStagePr
 
   // Single-polygon mask with a "hole" at the reveal rectangle. Outer rect winds
   // clockwise; inner rect winds counter-clockwise so nonzero fill carves it out.
+  // Outer points extend past 0/100 so sub-pixel rasterization can't leave a
+  // hairline seam along the stage edges; the parent's overflow-hidden crops
+  // the overshoot.
   const clipPath =
-    `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ` +
+    `polygon(-2% -2%, 102% -2%, 102% 102%, -2% 102%, -2% -2%, ` +
     `${left}% ${top}%, ${left}% ${bottom}%, ${right}% ${bottom}%, ${right}% ${top}%, ${left}% ${top}%)`;
 
   return (
@@ -26,6 +29,11 @@ export function CropStage({ imageUrl, focal, startSize, revealPct }: CropStagePr
         src={imageUrl}
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
+        // Anchor the cover-crop on the focal point. Without this, the
+        // image is centred and a tall portrait's face would be
+        // cropped out — the mask hole would then reveal whatever lies
+        // at the stage-percentage position instead of the focal area.
+        style={{ objectPosition: `${focal.x * 100}% ${focal.y * 100}%` }}
         draggable={false}
       />
       <div

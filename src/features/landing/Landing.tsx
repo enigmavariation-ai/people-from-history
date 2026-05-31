@@ -49,24 +49,23 @@ export function Landing({ goTo }: LandingProps) {
   return (
     <div
       id="landing-scroll"
-      className="h-[calc(100vh-41px)] overflow-y-auto bg-(--color-bg) scroll-smooth"
+      className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg) scroll-smooth"
     >
       <div className="pfh-nav-wrap">
         <nav className={'pfh-nav-pill' + (scrolled ? ' scrolled' : '')}>
           <BrandMark onClick={() => goTo('landing')} />
-          <div className="pfh-nav-links flex items-center gap-8">
+          <div className="hidden items-center gap-8 md:flex">
             {[
-              { label: 'Play', target: 'play-setup' as const },
-              { label: 'How to play', target: null },
-              { label: 'Leaderboard', target: 'leaderboard' as const },
-              { label: 'About', target: null },
+              { label: 'Play', onClick: () => goTo('challenge') },
+              { label: 'How to play', onClick: scrollToDemo },
+              { label: 'Leaderboard', onClick: () => goTo('leaderboard') },
             ].map((l) => (
               <a
                 key={l.label}
                 href="#"
                 onClick={(e) => {
                   e.preventDefault();
-                  if (l.target) goTo(l.target);
+                  l.onClick();
                 }}
                 className="text-sm text-(--color-ink) opacity-[0.78] no-underline transition-opacity duration-150 hover:opacity-100"
               >
@@ -77,36 +76,36 @@ export function Landing({ goTo }: LandingProps) {
           <div className="flex items-center gap-3.5">
             <a
               href="#"
-              onClick={(e) => e.preventDefault()}
-              className="mr-1 text-sm text-(--color-ink) opacity-[0.78] no-underline transition-opacity duration-150 hover:opacity-100"
+              onClick={(e) => {
+                e.preventDefault();
+                goTo('login');
+              }}
+              className="mr-1 hidden text-sm text-(--color-ink) opacity-[0.78] no-underline transition-opacity duration-150 hover:opacity-100 md:inline"
             >
               Log in
             </a>
             <button
-              onClick={() => goTo('play-setup')}
-              className="flex-shrink-0 whitespace-nowrap rounded-full border border-(--color-navy) bg-(--color-navy) px-[22px] py-2.5 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#1F2D49]"
+              onClick={() => goTo('challenge')}
+              className="flex-shrink-0 whitespace-nowrap rounded-full border border-(--color-navy) bg-(--color-navy) px-4 py-2 text-sm font-medium text-white transition-colors duration-150 hover:bg-[#1F2D49] md:px-[22px] md:py-2.5"
             >
-              Sign up
+              Play
             </button>
           </div>
         </nav>
       </div>
 
       {/* Hero */}
-      <section className="px-8 pb-20 pt-12">
-        <div
-          className="pfh-hero-grid mx-auto grid max-w-[1240px] items-center gap-14"
-          style={{ gridTemplateColumns: '1.1fr 1fr' }}
-        >
+      <section className="px-5 pb-12 pt-8 md:px-8 md:pb-20 md:pt-12">
+        <div className="mx-auto grid max-w-[1240px] items-center gap-8 md:grid-cols-[1.1fr_1fr] md:gap-14">
           <div>
-            <div className="mb-7 text-xs uppercase tracking-[4px] text-(--color-muted)">
+            <div className="mb-5 text-[11px] uppercase tracking-[4px] text-(--color-muted) md:mb-7 md:text-xs">
               A new daily game
             </div>
             <h1
-              className="pfh-hero-h1 mb-7"
+              className="mb-5 md:mb-7"
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 64,
+                fontSize: 'clamp(38px, 9vw, 64px)',
                 lineHeight: 1.04,
                 fontWeight: 400,
                 color: 'var(--color-ink)',
@@ -118,31 +117,31 @@ export function Landing({ goTo }: LandingProps) {
               Guess the figure from{' '}
               <em className="font-normal italic text-(--color-amber)">history</em>.
             </h1>
-            <p className="mb-9 max-w-[480px] text-xl leading-normal text-(--color-muted)">
+            <p className="mb-7 max-w-[480px] text-base leading-normal text-(--color-muted) md:mb-9 md:text-xl">
               Uncover remarkable people from the past. One portrait at a time — start with a glimpse, and reveal more only when you must.
             </p>
-            <div className="mb-10 flex flex-wrap gap-3">
+            <div className="mb-8 flex flex-wrap gap-3 md:mb-10">
               <button
                 onClick={() => goTo('daily-game')}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49]"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49] sm:flex-initial md:px-6 md:py-3.5"
               >
                 Play today's puzzle →
               </button>
               <button
                 onClick={scrollToDemo}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-transparent px-6 py-3.5 text-sm font-medium text-(--color-amber) transition-colors duration-150 hover:bg-(--color-amber-soft)/30"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-transparent px-5 py-3 text-sm font-medium text-(--color-amber) transition-colors duration-150 hover:bg-(--color-amber-soft)/30 sm:flex-initial md:px-6 md:py-3.5"
               >
                 How it works
               </button>
             </div>
-            <div className="flex flex-wrap gap-7">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 md:gap-7">
               {[
                 { k: '01', label: 'Daily puzzle' },
                 { k: '02', label: 'Learn history' },
                 { k: '03', label: 'Compete & climb' },
               ].map((f) => (
                 <div key={f.k} className="flex items-baseline gap-2">
-                  <span className="font-display text-xl italic text-(--color-amber)">{f.k}</span>
+                  <span className="font-display text-lg italic text-(--color-amber) md:text-xl">{f.k}</span>
                   <span className="text-sm text-(--color-body)">{f.label}</span>
                 </div>
               ))}
@@ -156,17 +155,17 @@ export function Landing({ goTo }: LandingProps) {
       {/* Live demo */}
       <section
         id="demo-how"
-        className="pfh-paper border-y border-(--color-rule) px-8 py-24"
+        className="pfh-paper border-y border-(--color-rule) px-5 py-14 md:px-8 md:py-24"
       >
         <div className="mx-auto max-w-[560px] text-center">
-          <div className="mb-[18px] font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
+          <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted) md:mb-[18px]">
             Plate I &nbsp;·&nbsp; specimen
           </div>
           <h2
             className="mb-3"
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 40,
+              fontSize: 'clamp(28px, 6vw, 40px)',
               lineHeight: 1.1,
               fontWeight: 400,
               letterSpacing: '-0.015em',
@@ -175,7 +174,7 @@ export function Landing({ goTo }: LandingProps) {
           >
             See how it <em className="font-normal italic text-(--color-amber)">works</em>.
           </h2>
-          <p className="mx-auto mb-10 text-lg leading-normal text-(--color-muted)">
+          <p className="mx-auto mb-7 text-base leading-normal text-(--color-muted) md:mb-10 md:text-lg">
             Move the slider to reveal more of the image.
           </p>
 
@@ -187,7 +186,7 @@ export function Landing({ goTo }: LandingProps) {
               revealPct={demoReveal}
             />
           </MattedPortrait>
-          <div className="mb-2 mt-3.5 font-display text-sm italic text-(--color-muted)">
+          <div className="mb-2 mt-3.5 px-2 font-display text-[13px] italic text-(--color-muted) md:text-sm">
             Anonymous sitter, c. 1947 &nbsp;—&nbsp; gelatin silver print, partially obscured.
           </div>
 
@@ -241,16 +240,16 @@ export function Landing({ goTo }: LandingProps) {
       </section>
 
       {/* How it works (navy panel) */}
-      <section className="pfh-navy mx-6 my-0 rounded-panel px-8 py-24">
+      <section className="pfh-navy mx-3 my-0 rounded-panel px-5 py-14 md:mx-6 md:px-8 md:py-24">
         <div className="mx-auto max-w-[1040px] text-center">
           <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-gold)">
             How it works
           </div>
           <h2
-            className="mx-auto mb-[72px] max-w-[640px]"
+            className="mx-auto mb-10 max-w-[640px] md:mb-[72px]"
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 40,
+              fontSize: 'clamp(28px, 6vw, 40px)',
               lineHeight: 1.1,
               fontWeight: 400,
               letterSpacing: '-0.015em',
@@ -261,10 +260,7 @@ export function Landing({ goTo }: LandingProps) {
             <em className="font-normal italic text-(--color-gold)">master</em>.
           </h2>
 
-          <div
-            className="pfh-steps grid items-start gap-4"
-            style={{ gridTemplateColumns: '1fr auto 1fr auto 1fr' }}
-          >
+          <div className="grid items-start gap-10 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:gap-4">
             <Step
               n="1"
               icon={<IconReveal />}
@@ -290,19 +286,19 @@ export function Landing({ goTo }: LandingProps) {
       </section>
 
       {/* Pull quote */}
-      <section className="pfh-paper border-y border-(--color-rule) px-8 py-[140px]">
+      <section className="pfh-paper border-y border-(--color-rule) px-5 py-16 md:px-8 md:py-[140px]">
         <div className="mx-auto max-w-[720px] text-center">
-          <div className="pfh-ornament mb-10">
+          <div className="pfh-ornament mb-7 md:mb-10">
             <div className="rule" />
             <div className="dot" />
             <div className="rule" />
           </div>
           <p
-            className="mb-7"
+            className="mb-6 md:mb-7"
             style={{
               fontFamily: 'var(--font-display)',
               fontStyle: 'italic',
-              fontSize: 32,
+              fontSize: 'clamp(20px, 4.8vw, 32px)',
               lineHeight: 1.32,
               fontWeight: 400,
               color: 'var(--color-ink)',
@@ -313,7 +309,7 @@ export function Landing({ goTo }: LandingProps) {
             “It's the kind of game where you'll shout the answer out loud one second and feel like an idiot the next.”
           </p>
           <div className="text-sm italic text-(--color-muted)">— Early tester</div>
-          <div className="pfh-ornament mt-10">
+          <div className="pfh-ornament mt-7 md:mt-10">
             <div className="rule" />
             <div className="dot" />
             <div className="rule" />
@@ -322,19 +318,19 @@ export function Landing({ goTo }: LandingProps) {
       </section>
 
       {/* Closing CTA (navy) */}
-      <section className="pfh-navy relative mx-6 mt-8 overflow-hidden rounded-panel px-8 py-[120px]">
+      <section className="pfh-navy relative mx-3 mt-5 overflow-hidden rounded-panel px-5 py-16 md:mx-6 md:mt-8 md:px-8 md:py-[120px]">
         <SculptureMotif side="left" />
         <SculptureMotif side="right" />
 
         <div className="relative mx-auto max-w-[640px] text-center">
-          <div className="mb-[18px] font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-gold)">
+          <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-gold) md:mb-[18px]">
             § Today
           </div>
           <h2
             className="mb-4"
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 40,
+              fontSize: 'clamp(28px, 6vw, 40px)',
               lineHeight: 1.1,
               fontWeight: 400,
               letterSpacing: '-0.015em',
@@ -344,12 +340,12 @@ export function Landing({ goTo }: LandingProps) {
             Ready to test your{' '}
             <em className="font-normal italic text-(--color-gold)">knowledge</em>?
           </h2>
-          <p className="mx-auto mb-9 max-w-[520px] text-lg leading-normal text-(--color-on-navy-muted)">
+          <p className="mx-auto mb-7 max-w-[520px] text-base leading-normal text-(--color-on-navy-muted) md:mb-9 md:text-lg">
             Start guessing and discover the stories behind history's most recognizable faces.
           </p>
           <div className="flex flex-col items-center gap-4">
             <button
-              onClick={() => goTo('play-setup')}
+              onClick={() => goTo('challenge')}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
             >
               Play now →
@@ -366,23 +362,32 @@ export function Landing({ goTo }: LandingProps) {
       </section>
 
       {/* Footer (navy) */}
-      <footer className="pfh-navy mx-6 mb-6 mt-3 rounded-panel px-8 pb-14 pt-10">
-        <div className="mx-auto grid max-w-[1240px] grid-cols-3 items-center gap-4 text-sm text-(--color-on-navy-muted)">
-          <BrandMark tone="dark" />
-          <div className="flex justify-center gap-7">
-            {['Play', 'How to play', 'Leaderboard', 'About'].map((l) => (
+      <footer className="pfh-navy mx-3 mb-4 mt-3 rounded-panel px-5 pb-8 pt-6 md:mx-6 md:mb-6 md:px-8 md:pb-14 md:pt-10">
+        <div className="mx-auto flex max-w-[1240px] flex-col items-center gap-5 text-sm text-(--color-on-navy-muted) md:grid md:grid-cols-3 md:gap-4">
+          <div className="md:justify-self-start">
+            <BrandMark tone="dark" />
+          </div>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 md:gap-7">
+            {[
+              { label: 'Play', onClick: () => goTo('challenge') },
+              { label: 'How to play', onClick: scrollToDemo },
+              { label: 'Leaderboard', onClick: () => goTo('leaderboard') },
+            ].map((l) => (
               <a
-                key={l}
+                key={l.label}
                 href="#"
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  l.onClick();
+                }}
                 className="text-(--color-on-navy) opacity-85 no-underline"
               >
-                {l}
+                {l.label}
               </a>
             ))}
           </div>
-          <div className="flex justify-end gap-4 text-right">
-            <span>© 2026</span>
+          <div className="text-center text-xs md:justify-self-end md:text-right md:text-sm">
+            © 2026
           </div>
         </div>
       </footer>
@@ -393,7 +398,7 @@ export function Landing({ goTo }: LandingProps) {
 function MattedPortrait({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="relative mx-auto rounded p-7"
+      className="relative mx-auto rounded p-4 md:p-7"
       style={{
         maxWidth: 476,
         background: '#FBF9F4',
@@ -470,7 +475,7 @@ function Step({
 
 function Connector() {
   return (
-    <div aria-hidden className="flex h-[72px] items-center pb-8">
+    <div aria-hidden className="hidden h-[72px] items-center pb-8 md:flex">
       <svg width="56" height="14" viewBox="0 0 56 14" fill="none" style={{ opacity: 0.4 }}>
         <path d="M0 7 H44" stroke="rgba(231,223,203,0.5)" strokeWidth="1" />
         <path
@@ -527,7 +532,7 @@ function SculptureMotif({ side }: { side: 'left' | 'right' }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute opacity-[0.08]"
+      className="pointer-events-none absolute hidden opacity-[0.08] md:block"
       style={{
         [side]: -20,
         bottom: -20,
