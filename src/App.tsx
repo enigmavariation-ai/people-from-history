@@ -2,7 +2,32 @@ import { useEffect, useState } from 'react';
 
 import { DesktopSidebar } from '@/components/DesktopSidebar';
 import { ProtoNav, type Screen } from '@/components/ProtoNav';
+import { loadString, saveString } from '@/lib/storage';
 import { startStateSync } from '@/lib/syncState';
+
+// Returning visitors skip the marketing landing and resume where they
+// left off. We persist the last in-app screen they navigated to and
+// rehydrate it on mount. Restricted to playable screens — utility
+// screens (login, audit) fall back to Landing on return.
+const RESUMABLE_SCREENS: ReadonlySet<Screen> = new Set([
+  'daily-game',
+  'daily',
+  'challenge',
+  'challenge-end',
+  'game',
+  'play-setup',
+  'leaderboard',
+  'profile',
+]);
+
+function pickInitialScreen(): Screen {
+  if (typeof window === 'undefined') return 'landing';
+  const last = loadString('app:lastScreen');
+  if (last && (RESUMABLE_SCREENS as Set<string>).has(last)) {
+    return last as Screen;
+  }
+  return 'landing';
+}
 import { AuditGallery } from '@/features/audit/AuditGallery';
 import { LoginScreen } from '@/features/auth/LoginScreen';
 import { ProfileScreen } from '@/features/auth/ProfileScreen';
@@ -16,7 +41,7 @@ import { Landing } from '@/features/landing/Landing';
 import { LeaderboardScreen } from '@/features/leaderboard/LeaderboardScreen';
 
 function App() {
-  const [screen, setScreen] = useState<Screen>('landing');
+  const [screen, setScreen] = useState<Screen>(pickInitialScreen);
 
   // Wire the auth → state-sync bridge once. After this, any sign-in
   // event reconciles local and remote state automatically.
@@ -26,6 +51,15 @@ function App() {
 
   const goTo = (id: Screen) => {
     setScreen(id);
+    // Persist the destination for the resume-on-return flow. Only
+    // playable screens count; auth + audit fall back to Landing next
+    // time, and Landing itself is the implicit "no resume" state so
+    // we explicitly clear it.
+    if (id === 'landing') {
+      saveString('app:lastScreen', '');
+    } else if ((RESUMABLE_SCREENS as Set<string>).has(id)) {
+      saveString('app:lastScreen', id);
+    }
     requestAnimationFrame(() => {
       const ls = document.getElementById('landing-scroll');
       if (ls) ls.scrollTop = 0;

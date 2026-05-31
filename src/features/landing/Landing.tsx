@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { BrandMark } from '@/components/BrandMark';
 import { sampleFigure } from '@/data/sampleFigure';
@@ -18,6 +18,10 @@ export function Landing({ goTo }: LandingProps) {
   const [demoReveal, setDemoReveal] = useState(15);
   const [demoGuess, setDemoGuess] = useState('');
   const [demoFeedback, setDemoFeedback] = useState<DemoFeedback>(null);
+  // Anchor for the mobile sticky-CTA observer — the bar appears once
+  // the hero's Play button scrolls out of view.
+  const heroCtaRef = useRef<HTMLButtonElement | null>(null);
+  const [heroCtaVisible, setHeroCtaVisible] = useState(true);
 
   const demoFigure = figures.find((f) => f.id === 'einstein') ?? sampleFigure;
 
@@ -27,6 +31,22 @@ export function Landing({ goTo }: LandingProps) {
     const onScroll = () => setScrolled(root.scrollTop > 24);
     root.addEventListener('scroll', onScroll, { passive: true });
     return () => root.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Track whether the hero CTA is in view inside the landing-scroll
+  // container — drives the sticky bottom CTA on mobile.
+  useEffect(() => {
+    const root = document.getElementById('landing-scroll');
+    const target = heroCtaRef.current;
+    if (!root || !target) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) setHeroCtaVisible(entry.isIntersecting);
+      },
+      { root, threshold: 0 },
+    );
+    obs.observe(target);
+    return () => obs.disconnect();
   }, []);
 
   const submitDemo = (e: React.FormEvent) => {
@@ -117,24 +137,44 @@ export function Landing({ goTo }: LandingProps) {
               Guess the figure from{' '}
               <em className="font-normal italic text-(--color-amber)">history</em>.
             </h1>
-            <p className="mb-7 max-w-[480px] text-base leading-normal text-(--color-muted) md:mb-9 md:text-xl">
+            {/* Body copy is desktop-only — mobile cuts straight to the CTA
+                to minimize time-to-play. */}
+            <p className="mb-9 hidden max-w-[480px] text-base leading-normal text-(--color-muted) md:block md:text-xl">
               Uncover remarkable people from the past. One portrait at a time — start with a glimpse, and reveal more only when you must.
             </p>
-            <div className="mb-8 flex flex-wrap gap-3 md:mb-10">
+            <div className="mb-4 md:mb-10">
+              {/* Mobile: one big primary CTA. Desktop: pair of equal buttons. */}
               <button
+                ref={heroCtaRef}
                 onClick={() => goTo('daily-game')}
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49] sm:flex-initial md:px-6 md:py-3.5"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-5 py-3.5 text-base font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49] md:hidden"
               >
                 Play today's puzzle →
               </button>
-              <button
-                onClick={scrollToDemo}
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-transparent px-5 py-3 text-sm font-medium text-(--color-amber) transition-colors duration-150 hover:bg-(--color-amber-soft)/30 sm:flex-initial md:px-6 md:py-3.5"
-              >
-                How it works
-              </button>
+              <div className="hidden flex-wrap gap-3 md:flex">
+                <button
+                  onClick={() => goTo('daily-game')}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49]"
+                >
+                  Play today's puzzle →
+                </button>
+                <button
+                  onClick={scrollToDemo}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-transparent px-6 py-3.5 text-sm font-medium text-(--color-amber) transition-colors duration-150 hover:bg-(--color-amber-soft)/30"
+                >
+                  How it works
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 md:gap-7">
+            {/* Mobile-only "How it works" demoted to a tap-target text
+                link below the primary CTA. */}
+            <button
+              onClick={scrollToDemo}
+              className="mb-8 text-sm text-(--color-amber) underline-offset-2 hover:underline md:hidden"
+            >
+              How it works
+            </button>
+            <div className="hidden flex-wrap gap-x-5 gap-y-2 md:flex md:gap-7">
               {[
                 { k: '01', label: 'Daily puzzle' },
                 { k: '02', label: 'Learn history' },
@@ -152,10 +192,12 @@ export function Landing({ goTo }: LandingProps) {
         </div>
       </section>
 
-      {/* Live demo */}
+      {/* Live demo — hidden on mobile to shorten the path to play.
+          The navy "How it works" panel below is enough explanation
+          for narrow viewports. */}
       <section
         id="demo-how"
-        className="pfh-paper border-y border-(--color-rule) px-5 py-14 md:px-8 md:py-24"
+        className="pfh-paper hidden border-y border-(--color-rule) px-5 py-14 md:block md:px-8 md:py-24"
       >
         <div className="mx-auto max-w-[560px] text-center">
           <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted) md:mb-[18px]">
@@ -285,8 +327,10 @@ export function Landing({ goTo }: LandingProps) {
         </div>
       </section>
 
-      {/* Pull quote */}
-      <section className="pfh-paper border-y border-(--color-rule) px-5 py-16 md:px-8 md:py-[140px]">
+      {/* Pull quote — desktop-only. On mobile, the navy "How it
+          works" + closing CTA carry the conversion weight without
+          this extra scroll. */}
+      <section className="pfh-paper hidden border-y border-(--color-rule) px-5 py-16 md:block md:px-8 md:py-[140px]">
         <div className="mx-auto max-w-[720px] text-center">
           <div className="pfh-ornament mb-7 md:mb-10">
             <div className="rule" />
@@ -391,6 +435,30 @@ export function Landing({ goTo }: LandingProps) {
           </div>
         </div>
       </footer>
+
+      {/* Mobile-only sticky CTA. Appears after the hero's Play button
+          scrolls out of view; the visitor is always one tap away from
+          starting today's puzzle. Safe-area aware so it doesn't get
+          covered by the iOS home indicator. */}
+      <div
+        className={
+          'pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-3 pt-2 transition-transform duration-200 md:hidden ' +
+          (heroCtaVisible ? 'translate-y-full' : 'translate-y-0')
+        }
+        style={{
+          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+          background:
+            'linear-gradient(to top, rgba(242,233,210,0.96) 60%, rgba(242,233,210,0))',
+        }}
+        aria-hidden={heroCtaVisible}
+      >
+        <button
+          onClick={() => goTo('daily-game')}
+          className="pointer-events-auto inline-flex min-h-12 w-full max-w-[420px] items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-5 py-3 text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(20,20,25,0.35)] hover:bg-[#1F2D49]"
+        >
+          Play today's puzzle →
+        </button>
+      </div>
     </div>
   );
 }
