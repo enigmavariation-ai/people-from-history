@@ -104,9 +104,10 @@ export function PrivacyScreen({ goTo }: PrivacyScreenProps) {
           <ul className="list-disc space-y-1 pl-5">
             <li>
               <strong className="font-medium text-(--color-ink)">Supabase</strong>{' '}
-              (database, authentication, file storage). A data-processing
-              agreement (DPA) is in place. Supabase hosts the data in the
-              region configured for the project; see{' '}
+              (database, authentication, file storage). All game and account
+              data is stored on infrastructure hosted by Amazon Web Services
+              in the European Union. A data-processing agreement (DPA) is in
+              place; see{' '}
               <a
                 className="text-(--color-amber) underline-offset-2 hover:underline"
                 href="https://supabase.com/privacy"
@@ -158,9 +159,13 @@ export function PrivacyScreen({ goTo }: PrivacyScreenProps) {
             </li>
           </ul>
           <p className="mt-2">
-            Where any of these providers process data outside the EU/EEA we
-            rely on the standard contractual clauses (SCCs) and the EU-US Data
-            Privacy Framework, as applicable.
+            Your account and game data is stored within the EU (Supabase on
+            AWS Europe). Some supporting services — Vercel's CDN edges,
+            Cloudflare's bot-detection network, and Google's OAuth servers
+            (only if you sign in with Google) — may process limited technical
+            data outside the EU/EEA. For those transfers we rely on the
+            standard contractual clauses (SCCs) and the EU-US Data Privacy
+            Framework, as applicable.
           </p>
         </Section>
 
