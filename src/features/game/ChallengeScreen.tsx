@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { RoundChrome } from '@/features/game/GameScreen';
 import { matches } from '@/lib/matching';
-import { DIFFICULTY_MULTIPLIER, scoreChallengeRound } from '@/lib/scoring';
+import { scoreChallengeRound } from '@/lib/scoring';
 import { saveString } from '@/lib/storage';
 import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
@@ -204,7 +204,6 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
   const runningTotal = results.reduce((s, r) => s + r.finalScore, 0) + pendingScore;
 
   const potential = figure ? scoreChallengeRound(reveal, usedHints, tier) : 0;
-  const potentialMax = Math.round(90 * DIFFICULTY_MULTIPLIER[tier]);
 
   return (
     <RoundChrome
@@ -227,7 +226,6 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
         if (v > reveal) setReveal(v);
       }}
       potential={potential}
-      potentialMax={potentialMax}
       score={runningTotal}
       streak={tierStreak}
       outcome={outcome}

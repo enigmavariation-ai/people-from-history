@@ -265,7 +265,6 @@ export type RoundChromeProps = {
   visualReveal: number;
   onReveal: (v: number) => void;
   potential: number;
-  potentialMax?: number; // defaults to 90 (Practice ceiling); Challenge passes 90 × tier multiplier
   score: number;
   streak: number;
   outcome: Outcome;
@@ -323,7 +322,6 @@ export function RoundChrome(props: RoundChromeProps) {
     score,
     streak,
     pulse,
-    potentialMax = 90,
     scoreLabel = 'Score',
     streakLabel = 'Streak',
     nextLabel = 'Next figure',
