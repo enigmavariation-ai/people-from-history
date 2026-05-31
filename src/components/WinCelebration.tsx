@@ -52,26 +52,36 @@ export function WinCelebration({ trigger, pointsLabel }: WinCelebrationProps) {
       aria-hidden
       className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
     >
-      <div className="pfh-celebrate flex flex-col items-center gap-2 px-6 text-center">
+      {/* Glass card — same blur + saturation as the floating nav pill,
+          so the phrase and points stay legible against any portrait
+          underneath. Pure opacity animation, no movement. */}
+      <div
+        className="pfh-celebrate flex flex-col items-center gap-2 px-7 py-5 text-center"
+        style={{
+          background: 'rgba(248, 241, 222, 0.78)',
+          backdropFilter: 'blur(22px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(22px) saturate(180%)',
+          border: '1px solid rgba(255, 255, 255, 0.55)',
+          boxShadow:
+            '0 1px 0 rgba(255,255,255,0.5) inset, 0 12px 32px rgba(22,22,22,0.12)',
+          borderRadius: 18,
+        }}
+      >
         <div
           className="leading-none"
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(40px, 8vw, 64px)',
+            fontSize: 'clamp(36px, 7vw, 56px)',
             fontWeight: 500,
             color: 'var(--color-ink)',
             letterSpacing: '-0.02em',
-            textShadow: '0 1px 24px var(--color-bg)',
             textWrap: 'balance',
           }}
         >
           {phrase}
         </div>
         {pointsLabel && (
-          <div
-            className="font-mono text-sm uppercase tracking-[0.18em] text-(--color-amber)"
-            style={{ textShadow: '0 1px 24px var(--color-bg)' }}
-          >
+          <div className="font-mono text-sm uppercase tracking-[0.18em] text-(--color-amber)">
             {pointsLabel}
           </div>
         )}
