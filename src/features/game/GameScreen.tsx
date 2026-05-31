@@ -335,6 +335,9 @@ export function RoundChrome(props: RoundChromeProps) {
     score,
     streak,
     pulse,
+    outcome,
+    onGiveUp,
+    onNext,
     scoreLabel = 'Score',
     streakLabel = 'Streak',
     nextLabel = 'Next figure',
@@ -388,6 +391,28 @@ export function RoundChrome(props: RoundChromeProps) {
             extra={`· ${streakLabel} ${streak}`}
             pulse={pulse}
           />
+        )}
+      </div>
+      {/* Mobile-only primary action — mirrors the score pill on the
+          right edge of the stage so players can give up or advance
+          without scrolling past the slider, hints, and guess box. */}
+      <div className="absolute bottom-3 right-3 md:hidden">
+        {outcome === 'playing' ? (
+          <button
+            onClick={onGiveUp}
+            disabled={!figure}
+            className="inline-flex items-center rounded-full border border-(--color-hairline-strong) bg-white/95 px-3 py-1.5 text-xs font-medium text-(--color-body) backdrop-blur-sm transition-opacity duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Give up
+          </button>
+        ) : (
+          <button
+            onClick={onNext}
+            className="inline-flex items-center gap-1 rounded-full border border-(--color-amber) bg-(--color-amber) px-3.5 py-1.5 text-xs font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+          >
+            {nextLabel}
+            <span aria-hidden>→</span>
+          </button>
         )}
       </div>
     </div>
@@ -453,10 +478,7 @@ function MobileTree(
     feedback,
     usedHints,
     onUseHint,
-    onGiveUp,
-    onNext,
     footMeta,
-    nextLabel = 'Next figure',
     topInsert,
     stageContent,
   } = props;
@@ -572,29 +594,18 @@ function MobileTree(
           </button>
         </form>
 
-        <div className="mt-3 flex items-center justify-between gap-2">
-          {outcome === 'playing' ? (
-            <button
-              onClick={onGiveUp}
-              disabled={!figure}
-              className="inline-flex min-h-10 items-center justify-center rounded-button border border-(--color-hairline-strong) bg-transparent px-4 py-2 text-sm font-medium text-(--color-body) disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Give up &amp; reveal
-            </button>
-          ) : (
-            <button
-              onClick={onNext}
-              className="inline-flex min-h-10 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-2 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-            >
-              {nextLabel}
-            </button>
-          )}
-          {footMeta && (
+        {/* The primary action (Give up / Next) has been moved to a
+            pill at the bottom-right of the stage so mobile players
+            can advance without scrolling. We keep the meta line —
+            currently "X rounds left" in Challenge — anchored here
+            since it pairs with the round progress indicators above. */}
+        {footMeta && (
+          <div className="mt-3 flex items-center justify-end">
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
               {footMeta}
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
