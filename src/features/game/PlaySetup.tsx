@@ -1,6 +1,8 @@
 import { AppMenu } from '@/components/AppMenu';
+import { isPermanent } from '@/lib/auth';
 import { loadString, saveString } from '@/lib/storage';
 import { pushPracticeState } from '@/lib/syncState';
+import { useAuth } from '@/lib/useAuth';
 import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
 import type { Difficulty } from '@/types/figure';
@@ -21,6 +23,8 @@ function currentDifficulty(): Difficulty {
 
 export function PlaySetup({ goTo }: PlaySetupProps) {
   const { figures, loading } = useFigures();
+  const { user } = useAuth();
+  const signedIn = isPermanent(user);
   const current = currentDifficulty();
 
   const counts: Record<Difficulty, number> = {
@@ -62,50 +66,79 @@ export function PlaySetup({ goTo }: PlaySetupProps) {
 
         <SectionMark>01 · Practice</SectionMark>
         <p className="mb-4 text-sm text-(--color-muted)">
-          Pick a tier and play as long as you want. No leaderboard.
+          {signedIn
+            ? 'Pick a tier and play as long as you want. No leaderboard.'
+            : 'Open-ended play with synced progress. Sign in to unlock.'}
         </p>
 
-        <div className="grid grid-cols-3 gap-2">
-          {PRACTICE_DIFFICULTIES.map((d) => {
-            const count = counts[d.key];
-            const selected = d.key === current;
-            return (
-              <button
-                key={d.key}
-                onClick={() => startPractice(d.key)}
-                className={
-                  'group flex flex-col items-start gap-1 rounded-card border bg-white px-3 py-3 text-left transition-colors duration-150 md:px-4 md:py-4 ' +
-                  (selected
-                    ? 'border-(--color-amber) bg-(--color-amber-soft)/40'
-                    : 'border-(--color-hairline) hover:border-(--color-hairline-strong) hover:bg-(--color-paper)')
-                }
-              >
-                <span className="flex w-full items-baseline justify-between gap-1">
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 'clamp(17px, 4.5vw, 22px)',
-                      fontWeight: 500,
-                      color: 'var(--color-ink)',
-                      letterSpacing: '-0.01em',
-                    }}
-                  >
-                    {d.label}
+        {signedIn ? (
+          <div className="grid grid-cols-3 gap-2">
+            {PRACTICE_DIFFICULTIES.map((d) => {
+              const count = counts[d.key];
+              const selected = d.key === current;
+              return (
+                <button
+                  key={d.key}
+                  onClick={() => startPractice(d.key)}
+                  className={
+                    'group flex flex-col items-start gap-1 rounded-card border bg-white px-3 py-3 text-left transition-colors duration-150 md:px-4 md:py-4 ' +
+                    (selected
+                      ? 'border-(--color-amber) bg-(--color-amber-soft)/40'
+                      : 'border-(--color-hairline) hover:border-(--color-hairline-strong) hover:bg-(--color-paper)')
+                  }
+                >
+                  <span className="flex w-full items-baseline justify-between gap-1">
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: 'clamp(17px, 4.5vw, 22px)',
+                        fontWeight: 500,
+                        color: 'var(--color-ink)',
+                        letterSpacing: '-0.01em',
+                      }}
+                    >
+                      {d.label}
+                    </span>
+                    <TierMark difficulty={d.key} />
                   </span>
-                  <TierMark difficulty={d.key} />
-                </span>
-                <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
-                  {loading ? '…' : `${count} figures`}
-                </span>
-                {selected && (
-                  <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-(--color-amber)">
-                    last played
+                  <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
+                    {loading ? '…' : `${count} figures`}
                   </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                  {selected && (
+                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-(--color-amber)">
+                      last played
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-card border border-(--color-amber) bg-(--color-amber-soft)/40 px-4 py-5 md:px-5 md:py-6">
+            <div
+              className="mb-2 leading-snug"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(20px, 4.5vw, 24px)',
+                fontWeight: 500,
+                color: 'var(--color-ink)',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              Sign in to unlock Practice
+            </div>
+            <p className="mb-4 text-sm text-(--color-body)">
+              Practice tracks your streak, figures seen, and tier preference across
+              every device — only meaningful once you've got an account.
+            </p>
+            <button
+              onClick={() => goTo('login')}
+              className="inline-flex min-h-11 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-2.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-(--color-amber-hover)"
+            >
+              Sign in to play →
+            </button>
+          </div>
+        )}
 
         {/* CENTURIES — premium-only era packs. Cards are visibly locked
             (lock icon + amber Premium chip) and clicking surfaces the

@@ -104,6 +104,99 @@ export async function fetchDailyPlays(): Promise<RemoteDailyPlay[]> {
   return (data ?? []) as RemoteDailyPlay[];
 }
 
+export type ProfileStats = {
+  dailyPlays: number;
+  dailyWins: number;
+  dailyWinRate: number; // 0..1
+  longestDailyStreak: number;
+  challengeRuns: number;
+  bestChallengeScore: number;
+  avgRevealOnWin: number; // 0..100, NaN if no wins
+};
+
+// Aggregate per-user totals for the Profile screen. Reads `daily_plays`
+// and `runs` and computes summary metrics client-side. Returns a
+// zeroed shape if the user isn't permanent (so the UI can render
+// without conditional plumbing).
+export async function fetchProfileStats(): Promise<ProfileStats> {
+  const zero: ProfileStats = {
+    dailyPlays: 0,
+    dailyWins: 0,
+    dailyWinRate: 0,
+    longestDailyStreak: 0,
+    challengeRuns: 0,
+    bestChallengeScore: 0,
+    avgRevealOnWin: NaN,
+  };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!isPermanent(user)) return zero;
+
+  const [playsRes, runsRes] = await Promise.all([
+    supabase
+      .from('daily_plays')
+      .select('date,won,reveal')
+      .eq('user_id', user!.id)
+      .order('date', { ascending: false }),
+    supabase
+      .from('runs')
+      .select('score')
+      .eq('user_id', user!.id),
+  ]);
+
+  const plays = (playsRes.data ?? []) as Array<{ date: string; won: boolean; reveal: number }>;
+  const runs = (runsRes.data ?? []) as Array<{ score: number }>;
+
+  const dailyPlays = plays.length;
+  const dailyWins = plays.filter((p) => p.won).length;
+  const dailyWinRate = dailyPlays > 0 ? dailyWins / dailyPlays : 0;
+
+  // Longest streak of consecutive winning days. Walk plays sorted
+  // desc; group runs of `won` separated by gaps in date or losses.
+  let longestStreak = 0;
+  let current = 0;
+  let prevDate: Date | null = null;
+  for (const p of plays) {
+    const d = new Date(p.date + 'T00:00:00Z');
+    if (!p.won) {
+      current = 0;
+      prevDate = d;
+      continue;
+    }
+    if (prevDate) {
+      const expected = new Date(prevDate);
+      expected.setUTCDate(expected.getUTCDate() - 1);
+      if (d.getTime() === expected.getTime()) {
+        current++;
+      } else {
+        current = 1;
+      }
+    } else {
+      current = 1;
+    }
+    if (current > longestStreak) longestStreak = current;
+    prevDate = d;
+  }
+
+  const challengeRuns = runs.length;
+  const bestChallengeScore = runs.reduce((m, r) => Math.max(m, r.score), 0);
+
+  const wins = plays.filter((p) => p.won);
+  const avgRevealOnWin =
+    wins.length > 0 ? wins.reduce((s, p) => s + p.reveal, 0) / wins.length : NaN;
+
+  return {
+    dailyPlays,
+    dailyWins,
+    dailyWinRate,
+    longestDailyStreak: longestStreak,
+    challengeRuns,
+    bestChallengeScore,
+    avgRevealOnWin,
+  };
+}
+
 // ---- practice state -----------------------------------------------------
 
 export type LocalPracticeState = {

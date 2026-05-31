@@ -30,6 +30,11 @@ export function LoginScreen({ goTo }: LoginScreenProps) {
   const [state, setState] = useState<FormState>({ kind: 'idle' });
   const isAnon = !!user?.is_anonymous;
   const alreadySignedIn = !!user && !user.is_anonymous;
+  // Mode switches the framing only — the underlying magic-link flow
+  // is identical (Supabase handles "create user if new, send link if
+  // existing" automatically). Sign-up pitches the value-prop;
+  // sign-in keeps it concise for returning users.
+  const [mode, setMode] = useState<'signup' | 'signin'>('signup');
 
   // Cloudflare Turnstile captcha. Required for any new-session
   // sign-in (Supabase rejects OTP and OAuth requests without a token
@@ -175,7 +180,7 @@ export function LoginScreen({ goTo }: LoginScreenProps) {
         </div>
 
         <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
-          § Save your progress
+          § {mode === 'signup' ? 'Save your progress' : 'Welcome back'}
         </div>
         <h1
           className="mb-4"
@@ -189,13 +194,23 @@ export function LoginScreen({ goTo }: LoginScreenProps) {
             textWrap: 'balance',
           }}
         >
-          Sign in across{' '}
-          <em className="font-normal italic text-(--color-amber)">devices</em>.
+          {mode === 'signup' ? (
+            <>
+              Sign up across{' '}
+              <em className="font-normal italic text-(--color-amber)">devices</em>.
+            </>
+          ) : (
+            <>
+              Welcome <em className="font-normal italic text-(--color-amber)">back</em>.
+            </>
+          )}
         </h1>
         <p className="mb-7 text-base leading-normal text-(--color-muted)">
-          {isAnon
-            ? 'Link your account so your streaks and history come with you to your phone, laptop, anywhere.'
-            : 'One tap and your daily streak, run history, and figures-seen carry across every device you play on.'}
+          {mode === 'signup'
+            ? isAnon
+              ? 'Link your account so your streaks and history come with you to your phone, laptop, anywhere.'
+              : 'Create an account so your daily streak, run history, and figures-seen carry across every device you play on.'
+            : 'Pick up where you left off. We email a one-tap link — no password to remember.'}
         </p>
 
         <form onSubmit={submitMagicLink} className="mb-3">
@@ -223,7 +238,9 @@ export function LoginScreen({ goTo }: LoginScreenProps) {
               ? 'Sending…'
               : captchaRequired && !captchaToken
                 ? 'Verifying…'
-                : 'Send magic link →'}
+                : mode === 'signup'
+                  ? 'Create my account →'
+                  : 'Send sign-in link →'}
           </button>
         </form>
 
@@ -281,9 +298,36 @@ export function LoginScreen({ goTo }: LoginScreenProps) {
           </div>
         )}
 
-        <p className="mt-8 text-xs leading-relaxed text-(--color-muted)">
-          By signing in you agree we can email you a sign-in link. No spam, no
-          newsletter; you can sign out and delete your account anytime.
+        {/* Mode toggle. Sign-up vs sign-in run the same magic-link
+            flow; this just swaps the framing. */}
+        <div className="mt-6 text-center text-sm text-(--color-muted)">
+          {mode === 'signup' ? (
+            <>
+              Have an account?{' '}
+              <button
+                onClick={() => setMode('signin')}
+                className="font-medium text-(--color-amber) underline-offset-2 hover:underline"
+              >
+                Sign in
+              </button>
+            </>
+          ) : (
+            <>
+              New here?{' '}
+              <button
+                onClick={() => setMode('signup')}
+                className="font-medium text-(--color-amber) underline-offset-2 hover:underline"
+              >
+                Sign up
+              </button>
+            </>
+          )}
+        </div>
+
+        <p className="mt-6 text-xs leading-relaxed text-(--color-muted)">
+          By {mode === 'signup' ? 'signing up' : 'signing in'} you agree we can
+          email you a one-tap link. No spam, no newsletter; you can sign out
+          and delete your account anytime.
         </p>
       </div>
     </div>

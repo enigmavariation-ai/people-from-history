@@ -10,7 +10,9 @@ import {
   type DailyPlay,
 } from '@/lib/daily';
 import { renderDailyShareImage } from '@/lib/renderShareImage';
+import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
+import type { Figure } from '@/types/figure';
 
 type DailyResultProps = { goTo: (s: Screen) => void };
 
@@ -19,8 +21,6 @@ function buildShareText(play: DailyPlay, streak: number): string {
     month: 'long',
     day: 'numeric',
   });
-  // 10 buckets across the 10–100% reveal range. Filled squares represent
-  // the reveal at outcome time. Lost rounds get an all-black grid.
   const filled = play.won
     ? Math.max(1, Math.min(10, Math.round(play.reveal / 10)))
     : 10;
@@ -34,12 +34,10 @@ function buildShareText(play: DailyPlay, streak: number): string {
   return [`People from History · ${date}`, middle, grid, streakLine].join('\n');
 }
 
-// Time until the next UTC-midnight puzzle drop, formatted as a short
-// human string ("5h 24m", "27m", "less than a minute"). Recomputed by
-// the caller's useEffect tick.
+// Time until the next UTC-midnight puzzle drop.
 function formatTimeUntilNextPuzzle(now: Date): string {
   const next = new Date(now);
-  next.setUTCHours(24, 0, 0, 0); // next UTC midnight
+  next.setUTCHours(24, 0, 0, 0);
   const ms = next.getTime() - now.getTime();
   if (ms <= 60_000) return 'less than a minute';
   const totalMinutes = Math.floor(ms / 60_000);
@@ -53,9 +51,17 @@ export function DailyResult({ goTo }: DailyResultProps) {
   const play = useMemo(() => loadLastDailyPlay(), []);
   const streak = useMemo(() => getDailyStreak(), []);
   const today = useMemo(() => todayIsoDate(), []);
+  const { figures } = useFigures();
+  // Look up the played figure for portrait + about-panel data. Falls
+  // back to a synthetic Figure built from the cached DailyPlay so we
+  // can still render something while figures load.
+  const figure = useMemo<Figure | null>(() => {
+    if (!play) return null;
+    const found = figures.find((f) => f.id === play.figureId);
+    return found ?? null;
+  }, [figures, play]);
 
-  // Live countdown to the next puzzle. Updates every minute; that's
-  // plenty since we render only hours+minutes.
+  // Live countdown to the next puzzle, refreshed once per minute.
   const [timeLeft, setTimeLeft] = useState(() => formatTimeUntilNextPuzzle(new Date()));
   useEffect(() => {
     const tick = () => setTimeLeft(formatTimeUntilNextPuzzle(new Date()));
@@ -123,100 +129,139 @@ export function DailyResult({ goTo }: DailyResultProps) {
 
   return (
     <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[440px] px-6 pb-24 pt-12 md:max-w-[860px] md:px-10 md:pt-16">
-        <div className="mb-10">
+      <div className="mx-auto max-w-[480px] px-5 pb-24 pt-5 md:max-w-[1040px] md:px-10 md:pt-10">
+        <div className="mb-5 md:mb-8">
           <AppMenu goTo={goTo} currentScreen="daily" />
         </div>
 
-        <div className="mb-3.5 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
+        <div className="mb-3 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
           § Daily · {dateLabel}
         </div>
 
-        <div className="pfh-ornament mb-7">
+        <div className="pfh-ornament mb-8">
           <div className="rule" />
           <div className="dot" />
           <div className="rule" />
         </div>
 
-        <h1
-          className="mb-4 text-center"
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 40,
-            lineHeight: 1.1,
-            fontWeight: 400,
-            letterSpacing: '-0.018em',
-            color: 'var(--color-ink)',
-            textWrap: 'balance',
-          }}
-        >
-          {won ? (
-            <>
-              Solved at{' '}
-              <em className="font-normal italic text-(--color-amber)">
-                {play.reveal}%
-              </em>{' '}
-              reveal.
-            </>
-          ) : (
-            <>
-              Today was{' '}
-              <em className="font-normal italic text-(--color-amber)">
-                {play.figureName}
-              </em>
-              .
-            </>
-          )}
-        </h1>
-        <div className="mb-12 text-center text-lg text-(--color-muted)">
-          {won
-            ? `+${play.score} points · Day ${streak} streak`
-            : 'No points today. Streak reset.'}
-        </div>
+        {/* Body — single column on mobile, two columns on desktop with
+            the portrait on the left and the result/copy on the right. */}
+        <div className="md:grid md:grid-cols-[1.05fr_1fr] md:items-start md:gap-12">
+          {/* Hero portrait of the figure they played. */}
+          <FigureFrame figure={figure} figureName={play.figureName} />
 
-        {/* Body — single column on mobile, two columns on desktop.
-            Left: outcome grid + caption; Right: share card. */}
-        <div className="md:grid md:grid-cols-2 md:items-start md:gap-10">
-          <div>
-            <div
-              aria-label={
-                won
-                  ? `Solved at ${play.reveal}% reveal, ${filled} of 10 squares filled`
-                  : 'Gave up'
-              }
-              className="mb-3.5 grid gap-1.5"
-              style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}
+          {/* Right column — result, stats, outcome grid, about. */}
+          <div className="mt-8 md:mt-0">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
+              {won ? 'Solved' : 'Stumped'}
+            </div>
+            <h1
+              className="mb-5"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(34px, 6vw, 48px)',
+                lineHeight: 1.05,
+                fontWeight: 400,
+                letterSpacing: '-0.022em',
+                color: 'var(--color-ink)',
+                textWrap: 'balance',
+              }}
             >
-              {squares.map((on, i) => (
-                <div
-                  key={i}
-                  aria-hidden
-                  className="aspect-square rounded-sm border"
-                  style={{
-                    background: !won
-                      ? 'var(--color-hairline-strong)'
-                      : on
-                        ? 'var(--color-amber-soft-2)'
-                        : 'transparent',
-                    borderColor: !won
-                      ? 'var(--color-hairline-strong)'
-                      : on
-                        ? 'var(--color-amber-soft-2)'
-                        : 'var(--color-hairline)',
-                  }}
-                />
-              ))}
-            </div>
-            <div className="text-center font-display text-sm italic text-(--color-muted)">
-              {won ? `${filled} of 10 increments shaded.` : 'No solve today.'}
-            </div>
-          </div>
+              {won ? (
+                <>
+                  At{' '}
+                  <em className="font-normal italic text-(--color-amber)">
+                    {play.reveal}%
+                  </em>{' '}
+                  reveal.
+                </>
+              ) : (
+                <>
+                  It was{' '}
+                  <em className="font-normal italic text-(--color-amber)">
+                    {play.figureName}
+                  </em>
+                  .
+                </>
+              )}
+            </h1>
 
-          <div className="mt-10 md:mt-0">
+            {/* Metric pills */}
+            <div className="mb-6 grid grid-cols-2 gap-2.5">
+              <Stat label={won ? 'Score' : 'Score'} value={won ? `+${play.score}` : '0'} />
+              <Stat
+                label="Day streak"
+                value={won ? String(streak) : '—'}
+                sub={won ? undefined : 'reset'}
+              />
+            </div>
+
+            {/* 10-square reveal grid — denser editorial framing. */}
+            <div className="mb-6">
+              <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-muted)">
+                {won ? `${filled} of 10 shaded` : 'No solve today'}
+              </div>
+              <div
+                aria-label={
+                  won
+                    ? `Solved at ${play.reveal}% reveal, ${filled} of 10 squares filled`
+                    : 'Gave up'
+                }
+                className="grid gap-1.5"
+                style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}
+              >
+                {squares.map((on, i) => (
+                  <div
+                    key={i}
+                    aria-hidden
+                    className="aspect-square rounded-sm border"
+                    style={{
+                      background: !won
+                        ? 'var(--color-hairline-strong)'
+                        : on
+                          ? 'var(--color-amber-soft-2)'
+                          : 'transparent',
+                      borderColor: !won
+                        ? 'var(--color-hairline-strong)'
+                        : on
+                          ? 'var(--color-amber-soft-2)'
+                          : 'var(--color-hairline)',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* About — auto-expanded on the result page, since the
+                whole point of Daily is to learn. */}
+            {figure?.summary && (
+              <div className="mb-6 rounded-card border border-(--color-rule) bg-(--color-paper) px-4 py-3.5">
+                <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
+                  About {figure.name}
+                </div>
+                <p className="text-sm leading-[1.5] text-(--color-body)">
+                  {figure.summary}
+                </p>
+                {figure.wikipedia_url && (
+                  <a
+                    href={figure.wikipedia_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-(--color-amber) no-underline"
+                  >
+                    Learn more on Wikipedia →
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Share card */}
             <ShareCard text={shareText} getImage={getShareImage} />
           </div>
         </div>
 
+        {/* Below-the-fold: sign-up nudge after a win, then countdown,
+            then "play another mode" footer link. */}
         {won && (
           <div className="mt-10">
             <SignUpNudge
@@ -238,7 +283,7 @@ export function DailyResult({ goTo }: DailyResultProps) {
           <div className="rule" />
         </div>
 
-        <div className="mb-3.5 text-center">
+        <div className="mb-3 text-center">
           <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
             Next puzzle in
           </div>
@@ -258,17 +303,140 @@ export function DailyResult({ goTo }: DailyResultProps) {
 
         <div className="text-center">
           <a
-            href="#play-setup"
+            href="#challenge"
             onClick={(e) => {
               e.preventDefault();
-              goTo('play-setup');
+              goTo('challenge');
             }}
             className="text-sm font-medium text-(--color-amber) no-underline"
           >
-            Play another mode →
+            Try the 10-figure challenge →
           </a>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Editorial portrait frame for the revealed figure. Renders the full
+// image with focal-aware object-position so the face anchors where
+// the player's eye expects it. Corner registration marks + a name
+// caption inside a gradient scrim along the bottom.
+function FigureFrame({
+  figure,
+  figureName,
+}: {
+  figure: Figure | null;
+  figureName: string;
+}) {
+  const eraField = figure
+    ? [figure.era, figure.field, figure.region].filter(Boolean).join(' · ')
+    : '';
+  return (
+    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-card border border-(--color-rule) bg-(--color-paper) shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+      {figure?.image_url ? (
+        <img
+          src={figure.image_url}
+          alt={figure.name}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{
+            objectPosition: `${figure.focal_x * 100}% ${figure.focal_y * 100}%`,
+          }}
+        />
+      ) : (
+        <div className="absolute inset-0 grid place-items-center text-xs text-(--color-muted)">
+          Loading portrait…
+        </div>
+      )}
+
+      {/* Corner registration marks for editorial framing. */}
+      {(
+        [
+          { top: 10, left: 10, b: '1px 0 0 1px' },
+          { top: 10, right: 10, b: '1px 1px 0 0' },
+          { bottom: 64, left: 10, b: '0 0 1px 1px' },
+          { bottom: 64, right: 10, b: '0 1px 1px 0' },
+        ] satisfies Array<{
+          top?: number;
+          bottom?: number;
+          left?: number;
+          right?: number;
+          b: string;
+        }>
+      ).map((p, i) => (
+        <div
+          key={i}
+          aria-hidden
+          className="absolute"
+          style={{
+            width: 10,
+            height: 10,
+            borderColor: 'rgba(255,255,255,0.55)',
+            borderStyle: 'solid',
+            borderWidth: p.b,
+            top: p.top,
+            bottom: p.bottom,
+            left: p.left,
+            right: p.right,
+          }}
+        />
+      ))}
+
+      {/* Caption — name + era/field/region in a gradient scrim. */}
+      <div
+        className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-10"
+        style={{
+          background:
+            'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 60%, transparent 100%)',
+        }}
+      >
+        <div
+          className="leading-tight text-white"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(20px, 4vw, 26px)',
+            fontWeight: 500,
+            letterSpacing: '-0.012em',
+          }}
+        >
+          {figure?.name ?? figureName}
+        </div>
+        {eraField && (
+          <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-white/75">
+            {eraField}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-card border border-(--color-hairline) bg-white px-3 py-2.5">
+      <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-(--color-muted)">
+        {label}
+      </span>
+      <span
+        className="tabular-nums leading-none"
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 26,
+          fontWeight: 500,
+          color: 'var(--color-ink)',
+        }}
+      >
+        {value}
+      </span>
+      {sub && <span className="text-[10px] text-(--color-muted)">{sub}</span>}
     </div>
   );
 }

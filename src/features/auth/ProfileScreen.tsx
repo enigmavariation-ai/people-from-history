@@ -5,7 +5,7 @@ import { isAnonymous, isPermanent, signOut, userDisplayLabel } from '@/lib/auth'
 import { getDailyStreak } from '@/lib/daily';
 import { getNickname, setNickname } from '@/lib/runs';
 import { loadNumber, loadStringSet } from '@/lib/storage';
-import { fetchDailyPlays } from '@/lib/syncState';
+import { fetchDailyPlays, fetchProfileStats, type ProfileStats } from '@/lib/syncState';
 import { useAuth } from '@/lib/useAuth';
 import type { Screen } from '@/components/ProtoNav';
 
@@ -36,6 +36,10 @@ export function ProfileScreen({ goTo }: ProfileScreenProps) {
   // Sync from Supabase happens in the background via syncState.
   const [stats, setStats] = useState<{ dailyStreak: number; figuresSeen: number; practiceRounds: number } | null>(null);
 
+  // Server-side aggregates for permanent users — total wins, win rate,
+  // longest streak, challenge runs, best score, avg reveal on win.
+  const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
+
   // 14-day daily history for permanent users (anon users see local
   // streak only). Pulled from the server on mount.
   const [history, setHistory] = useState<DailyHistoryRow[] | null>(null);
@@ -57,16 +61,21 @@ export function ProfileScreen({ goTo }: ProfileScreenProps) {
     });
   }, [user]);
 
-  // Fetch 14-day history for permanent users.
+  // Fetch profile aggregates + 14-day history for permanent users.
   useEffect(() => {
     if (!isPermanent(user)) {
       setHistory(null);
+      setProfileStats(null);
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const plays = await fetchDailyPlays();
+        const [plays, agg] = await Promise.all([
+          fetchDailyPlays(),
+          fetchProfileStats(),
+        ]);
+        if (!cancelled) setProfileStats(agg);
         if (cancelled) return;
         const byDate = new Map(plays.map((p) => [p.date, p]));
         const rows: DailyHistoryRow[] = [];
@@ -257,8 +266,56 @@ export function ProfileScreen({ goTo }: ProfileScreenProps) {
           </div>
         )}
 
-        {/* Stats (Phase 1: localStorage; Phase 2: Supabase) */}
-        {stats && (
+        {/* Aggregate stats for permanent users — pulled from Supabase. */}
+        {profileStats && profileStats.dailyPlays + profileStats.challengeRuns > 0 && (
+          <div className="mb-6">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-muted)">
+              Across all devices
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+              <StatBlock
+                label="Daily wins"
+                value={`${profileStats.dailyWins} / ${profileStats.dailyPlays}`}
+                sub={
+                  profileStats.dailyPlays > 0
+                    ? `${Math.round(profileStats.dailyWinRate * 100)}% win rate`
+                    : undefined
+                }
+              />
+              <StatBlock
+                label="Longest streak"
+                value={String(profileStats.longestDailyStreak)}
+              />
+              <StatBlock
+                label="Avg reveal on win"
+                value={
+                  isFinite(profileStats.avgRevealOnWin)
+                    ? `${Math.round(profileStats.avgRevealOnWin)}%`
+                    : '—'
+                }
+                sub="Lower = sharper"
+              />
+              <StatBlock
+                label="Challenge runs"
+                value={String(profileStats.challengeRuns)}
+              />
+              <StatBlock
+                label="Best run score"
+                value={String(profileStats.bestChallengeScore)}
+              />
+              {stats && (
+                <StatBlock
+                  label="Figures seen"
+                  value={`${stats.figuresSeen}`}
+                  sub="on this device"
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Local-only fallback for anon users (no server stats). */}
+        {!profileStats && stats && (
           <div className="mb-6">
             <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-muted)">
               On this device
@@ -277,6 +334,46 @@ export function ProfileScreen({ goTo }: ProfileScreenProps) {
               Last 14 days
             </div>
             <DailyHistoryGrid history={history} />
+          </div>
+        )}
+
+        {/* Account section — providers + created date + delete. */}
+        {user && !anon && (
+          <div className="mb-6">
+            <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-muted)">
+              Account
+            </div>
+            <div className="space-y-1.5 rounded-card border border-(--color-hairline) bg-white px-4 py-3 text-sm">
+              <AccountRow label="Email" value={user.email ?? '—'} />
+              <AccountRow
+                label="Signed in via"
+                value={
+                  (user.identities ?? [])
+                    .map((i) => i.provider)
+                    .join(' + ') || 'email'
+                }
+              />
+              {user.created_at && (
+                <AccountRow
+                  label="Joined"
+                  value={new Date(user.created_at).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                />
+              )}
+            </div>
+            <p className="mt-2 text-xs text-(--color-muted)">
+              Want your account deleted? Email{' '}
+              <a
+                href="mailto:niklas.fip@gmail.com?subject=Delete%20my%20account"
+                className="text-(--color-amber) underline-offset-2 hover:underline"
+              >
+                niklas.fip@gmail.com
+              </a>{' '}
+              with the address linked to your account.
+            </p>
           </div>
         )}
 
@@ -342,7 +439,15 @@ function DailyHistoryGrid({ history }: { history: DailyHistoryRow[] }) {
   );
 }
 
-function StatBlock({ label, value }: { label: string; value: string }) {
+function StatBlock({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
   return (
     <div className="flex flex-col gap-1 rounded-card border border-(--color-hairline) bg-white px-3 py-2.5">
       <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-(--color-muted)">
@@ -359,6 +464,20 @@ function StatBlock({ label, value }: { label: string; value: string }) {
       >
         {value}
       </span>
+      {sub && (
+        <span className="text-[10px] text-(--color-muted)">{sub}</span>
+      )}
+    </div>
+  );
+}
+
+function AccountRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-(--color-muted)">
+        {label}
+      </span>
+      <span className="truncate text-right text-(--color-ink)">{value}</span>
     </div>
   );
 }

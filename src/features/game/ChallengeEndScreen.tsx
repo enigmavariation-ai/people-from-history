@@ -193,45 +193,80 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
     }
   };
 
+  const accuracy = Math.round((correct / run.results.length) * 100);
+  const tierCounts = run.results.reduce(
+    (acc, r) => {
+      acc[r.difficulty]++;
+      return acc;
+    },
+    { easy: 0, medium: 0, hard: 0 } as Record<Difficulty, number>,
+  );
+  const bestRound = run.results.reduce<RoundResult | null>(
+    (best, r) => (best === null || r.finalScore > best.finalScore ? r : best),
+    null,
+  );
+
   return (
     <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
-      <div className="mx-auto max-w-[480px] px-6 pb-24 pt-12 md:max-w-[960px] md:px-10 md:pt-16">
-        <div className="mb-10">
+      <div className="mx-auto max-w-[520px] px-5 pb-24 pt-5 md:max-w-[1040px] md:px-10 md:pt-10">
+        <div className="mb-5 md:mb-8">
           <AppMenu goTo={goTo} currentScreen="challenge-end" />
         </div>
 
-        <div className="mb-3.5 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
+        <div className="mb-3 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
           § Challenge · {dateLabel}
         </div>
 
-        <div className="pfh-ornament mb-7">
+        <div className="pfh-ornament mb-8">
           <div className="rule" />
           <div className="dot" />
           <div className="rule" />
         </div>
 
-        <h1
-          className="mb-4 text-center"
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 40,
-            lineHeight: 1.1,
-            fontWeight: 400,
-            letterSpacing: '-0.018em',
-            color: 'var(--color-ink)',
-            textWrap: 'balance',
-          }}
-        >
-          <em className="font-normal italic text-(--color-amber)">{run.total}</em> points.
-        </h1>
-        <div className="mb-10 text-center text-lg text-(--color-muted)">
-          {correct} of {run.results.length} correct
+        {/* Hero metric block — the score is the moment. Big number on
+            the left, contextual stats on the right (desktop). On
+            mobile they stack with the score still anchoring. */}
+        <div className="mb-8 grid items-end gap-6 md:grid-cols-[1.1fr_1fr] md:gap-10">
+          <div className="text-center md:text-left">
+            <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
+              Final score
+            </div>
+            <div
+              className="leading-none tabular-nums"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(72px, 18vw, 144px)',
+                fontWeight: 400,
+                letterSpacing: '-0.04em',
+                color: 'var(--color-ink)',
+              }}
+            >
+              {run.total}
+            </div>
+            <div className="mt-2 text-sm text-(--color-muted) md:text-base">
+              {correct} of {run.results.length} correct · {accuracy}% accuracy
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            <Stat label="Correct" value={`${correct}/${run.results.length}`} />
+            <Stat label="Accuracy" value={`${accuracy}%`} />
+            <Stat
+              label="Best round"
+              value={bestRound ? `+${bestRound.finalScore}` : '—'}
+              sub={bestRound ? bestRound.figureName : undefined}
+            />
+            <Stat label="Easy" value={String(tierCounts.easy)} sub="rounds" />
+            <Stat label="Medium" value={String(tierCounts.medium)} sub="rounds" />
+            <Stat label="Hard" value={String(tierCounts.hard)} sub="rounds" />
+          </div>
         </div>
 
-        <div className="mx-auto mb-2 md:max-w-[640px]">
+        {/* Outcome grid + tier letters. */}
+        <div className="mb-10 rounded-card border border-(--color-hairline) bg-white px-4 py-4 md:px-6 md:py-5">
           <div
             aria-label={`Round outcomes: ${correct} of ${run.results.length}`}
-            className="grid gap-1.5"
+            className="mb-2 grid gap-1.5"
             style={{ gridTemplateColumns: `repeat(${run.results.length}, 1fr)` }}
           >
             {run.results.map((r, i) => (
@@ -250,9 +285,16 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
               />
             ))}
           </div>
-        </div>
-        <div className="mb-9 text-center font-display text-sm italic text-(--color-muted)">
-          {run.results.map((r) => DIFFICULTY_LABEL[r.difficulty]).join(' · ')}
+          <div
+            className="grid gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-(--color-muted)"
+            style={{ gridTemplateColumns: `repeat(${run.results.length}, 1fr)` }}
+          >
+            {run.results.map((r, i) => (
+              <div key={i} className="text-center">
+                {DIFFICULTY_LABEL[r.difficulty]}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Body — before submit: two columns on desktop (rounds left, submit + share right).
@@ -469,6 +511,38 @@ function RoundsTable({ results }: { results: RoundResult[] }) {
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-card border border-(--color-hairline) bg-white px-3 py-2.5">
+      <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-(--color-muted)">
+        {label}
+      </span>
+      <span
+        className="tabular-nums leading-none"
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 22,
+          fontWeight: 500,
+          color: 'var(--color-ink)',
+        }}
+      >
+        {value}
+      </span>
+      {sub && (
+        <span className="truncate text-[10px] text-(--color-muted)">{sub}</span>
+      )}
     </div>
   );
 }

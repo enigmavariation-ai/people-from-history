@@ -5,6 +5,7 @@ import { Coachmarks } from '@/components/Coachmarks';
 import { WinCelebration } from '@/components/WinCelebration';
 import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
+import { isPermanent } from '@/lib/auth';
 import { matches } from '@/lib/matching';
 import {
   loadNumber,
@@ -14,6 +15,7 @@ import {
   saveStringSet,
 } from '@/lib/storage';
 import { pushPracticeState } from '@/lib/syncState';
+import { useAuth } from '@/lib/useAuth';
 import { useFigures } from '@/lib/useFigures';
 import type { Screen } from '@/components/ProtoNav';
 import type { Difficulty, Figure } from '@/types/figure';
@@ -89,6 +91,17 @@ function selectNextFigure(
 
 export function GameScreen({ goTo }: GameScreenProps) {
   const { figures, loading, error } = useFigures();
+  const { user, loading: authLoading } = useAuth();
+
+  // Practice is gated to signed-up users — the stats it tracks
+  // (streak, figures-seen, tier preference) only make sense when
+  // synced across devices. Anon visitors hitting /game directly get
+  // bounced to the login screen.
+  useEffect(() => {
+    if (!authLoading && !isPermanent(user)) {
+      goTo('login');
+    }
+  }, [authLoading, user, goTo]);
 
   const [difficulty] = useState<Difficulty>(loadDifficulty);
   const [figure, setFigure] = useState<Figure | null>(null);
