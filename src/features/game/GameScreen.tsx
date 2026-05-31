@@ -395,23 +395,40 @@ export function RoundChrome(props: RoundChromeProps) {
       </div>
       {/* Mobile-only primary action — mirrors the score pill on the
           right edge of the stage so players can give up or advance
-          without scrolling past the slider, hints, and guess box. */}
+          without scrolling past the slider, hints, and guess box.
+          Sized to match the PillStat on the left: same padding,
+          radius, and display-serif at 14px for visual parity. */}
       <div className="absolute bottom-3 right-3 md:hidden">
         {outcome === 'playing' ? (
           <button
             onClick={onGiveUp}
             disabled={!figure}
-            className="inline-flex items-center rounded-full border border-(--color-hairline-strong) bg-white/95 px-3 py-1.5 text-xs font-medium text-(--color-body) backdrop-blur-sm transition-opacity duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center rounded-full border border-(--color-hairline-strong) bg-white/95 px-3 py-1.5 backdrop-blur-sm transition-opacity duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 14,
+              fontWeight: 500,
+              color: 'var(--color-body)',
+              letterSpacing: '-0.01em',
+            }}
           >
             Give up
           </button>
         ) : (
           <button
             onClick={onNext}
-            className="inline-flex items-center gap-1 rounded-full border border-(--color-amber) bg-(--color-amber) px-3.5 py-1.5 text-xs font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+            className="inline-flex items-center gap-1.5 rounded-full border border-(--color-amber) bg-(--color-amber) px-3 py-1.5 text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 14,
+              fontWeight: 500,
+              letterSpacing: '-0.01em',
+            }}
           >
             {nextLabel}
-            <span aria-hidden>→</span>
+            <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>
+              →
+            </span>
           </button>
         )}
       </div>
