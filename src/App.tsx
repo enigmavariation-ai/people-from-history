@@ -1,14 +1,28 @@
 import { useEffect, useState } from 'react';
 
+import { CookieNotice } from '@/components/CookieNotice';
 import { DesktopSidebar } from '@/components/DesktopSidebar';
 import { ProtoNav, type Screen } from '@/components/ProtoNav';
 import { loadString, saveString } from '@/lib/storage';
 import { startStateSync } from '@/lib/syncState';
+import { AuditGallery } from '@/features/audit/AuditGallery';
+import { LoginScreen } from '@/features/auth/LoginScreen';
+import { ProfileScreen } from '@/features/auth/ProfileScreen';
+import { DailyGame } from '@/features/daily/DailyGame';
+import { DailyResult } from '@/features/daily/DailyResult';
+import { ChallengeEndScreen } from '@/features/game/ChallengeEndScreen';
+import { ChallengeScreen } from '@/features/game/ChallengeScreen';
+import { GameScreen } from '@/features/game/GameScreen';
+import { PlaySetup } from '@/features/game/PlaySetup';
+import { Landing } from '@/features/landing/Landing';
+import { LeaderboardScreen } from '@/features/leaderboard/LeaderboardScreen';
+import { ImprintScreen } from '@/features/legal/ImprintScreen';
+import { PrivacyScreen } from '@/features/legal/PrivacyScreen';
 
 // Returning visitors skip the marketing landing and resume where they
 // left off. We persist the last in-app screen they navigated to and
 // rehydrate it on mount. Restricted to playable screens — utility
-// screens (login, audit) fall back to Landing on return.
+// screens (login, audit, legal) fall back to Landing on return.
 const RESUMABLE_SCREENS: ReadonlySet<Screen> = new Set([
   'daily-game',
   'daily',
@@ -28,17 +42,6 @@ function pickInitialScreen(): Screen {
   }
   return 'landing';
 }
-import { AuditGallery } from '@/features/audit/AuditGallery';
-import { LoginScreen } from '@/features/auth/LoginScreen';
-import { ProfileScreen } from '@/features/auth/ProfileScreen';
-import { DailyGame } from '@/features/daily/DailyGame';
-import { DailyResult } from '@/features/daily/DailyResult';
-import { ChallengeEndScreen } from '@/features/game/ChallengeEndScreen';
-import { ChallengeScreen } from '@/features/game/ChallengeScreen';
-import { GameScreen } from '@/features/game/GameScreen';
-import { PlaySetup } from '@/features/game/PlaySetup';
-import { Landing } from '@/features/landing/Landing';
-import { LeaderboardScreen } from '@/features/leaderboard/LeaderboardScreen';
 
 function App() {
   const [screen, setScreen] = useState<Screen>(pickInitialScreen);
@@ -101,9 +104,15 @@ function App() {
           {screen === 'daily' && <DailyResult goTo={goTo} />}
           {screen === 'login' && <LoginScreen goTo={goTo} />}
           {screen === 'profile' && <ProfileScreen goTo={goTo} />}
+          {screen === 'imprint' && <ImprintScreen goTo={goTo} />}
+          {screen === 'privacy' && <PrivacyScreen goTo={goTo} />}
           {screen === 'audit' && <AuditGallery goTo={goTo} />}
         </div>
       </div>
+      {/* Cookie notice — informational, dismissible. Renders once per
+          device on first visit; storage-only, no consent toggles since
+          we don't use marketing/analytics trackers. */}
+      <CookieNotice goTo={goTo} />
     </div>
   );
 }

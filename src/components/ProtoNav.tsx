@@ -9,6 +9,8 @@ export const SCREENS = [
   { id: 'daily', label: 'Daily result' },
   { id: 'login', label: 'Sign in' },
   { id: 'profile', label: 'Profile' },
+  { id: 'imprint', label: 'Imprint' },
+  { id: 'privacy', label: 'Privacy' },
   { id: 'audit', label: 'Audit' },
 ] as const;
 

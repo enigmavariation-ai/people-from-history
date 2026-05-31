@@ -355,6 +355,31 @@ export function Landing({ goTo }: LandingProps) {
         </div>
       </section>
 
+      {/* FAQ — collapsible questions. Lives between the "How it
+          works" navy panel and the closing CTA on all viewports so
+          it can intercept "yes but…" hesitation. */}
+      <section className="bg-(--color-bg) px-5 py-14 md:px-8 md:py-20">
+        <div className="mx-auto max-w-[720px]">
+          <div className="mb-3 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-amber)">
+            § Questions
+          </div>
+          <h2
+            className="mb-8 text-center"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(28px, 6vw, 40px)',
+              lineHeight: 1.1,
+              fontWeight: 400,
+              letterSpacing: '-0.015em',
+              textWrap: 'balance',
+            }}
+          >
+            Common <em className="font-normal italic text-(--color-amber)">questions</em>.
+          </h2>
+          <FaqList />
+        </div>
+      </section>
+
       {/* Pull quote — desktop-only. On mobile, the navy "How it
           works" + closing CTA carry the conversion weight without
           this extra scroll. */}
@@ -444,6 +469,8 @@ export function Landing({ goTo }: LandingProps) {
               { label: 'Play', onClick: () => goTo('challenge') },
               { label: 'How to play', onClick: scrollToDemo },
               { label: 'Leaderboard', onClick: () => goTo('leaderboard') },
+              { label: 'Imprint', onClick: () => goTo('imprint') },
+              { label: 'Privacy', onClick: () => goTo('privacy') },
             ].map((l) => (
               <a
                 key={l.label}
@@ -621,6 +648,98 @@ function IconClimb() {
         fill="none"
       />
     </svg>
+  );
+}
+
+const FAQS: ReadonlyArray<{ q: string; a: string }> = [
+  {
+    q: 'How do I play?',
+    a: "You see a tight crop of a historical figure's portrait. Drag the slider to reveal more of the image, then type your guess. Tighter crops earn more points. Daily mode gives you one figure per day; Challenge mode runs ten rounds with adaptive difficulty.",
+  },
+  {
+    q: 'Where do the figures come from?',
+    a: 'Portraits and biographies are sourced from Wikimedia Commons and Wikipedia, used under their respective licences (public domain or Creative Commons). Every figure links back to their Wikipedia article so you can learn more.',
+  },
+  {
+    q: 'Is it free?',
+    a: "Yes. Daily mode and the 10-figure Challenge are free for everyone. Practice mode requires a free account so your streak and figures-seen can sync across devices. Premium tiers — themed packs and centuries — will come later.",
+  },
+  {
+    q: 'Do I need an account?',
+    a: 'Not to play. You can jump straight into the daily puzzle or a challenge. Sign-up unlocks Practice mode and lets your daily streak follow you to other devices. Sign in is via email magic-link or Google — no passwords.',
+  },
+  {
+    q: 'What data do you collect?',
+    a: "Only what's needed to run the game: your email (if you sign up), your gameplay results, and a nickname for the leaderboard. We don't track you for ads or analytics. Full details are in the privacy policy.",
+  },
+  {
+    q: "I'm stuck. Can I get hints?",
+    a: 'Yes — every round offers four hints (era, field, region, first letter). In Challenge mode each hint costs points; in Daily and Practice the hints are free.',
+  },
+  {
+    q: 'How does the daily streak work?',
+    a: "Solve today's puzzle and your streak goes up by one. Miss a day or give up and it resets. Streaks save locally for anonymous players and sync to your account once you sign in.",
+  },
+  {
+    q: 'How do I delete my account?',
+    a: 'Email the address shown in the privacy policy from the account you want deleted. We remove your personal data within 30 days.',
+  },
+];
+
+function FaqList() {
+  return (
+    <div className="overflow-hidden rounded-card border border-(--color-rule) bg-white">
+      {FAQS.map((item, i) => (
+        <FaqItem
+          key={i}
+          q={item.q}
+          a={item.a}
+          isLast={i === FAQS.length - 1}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FaqItem({
+  q,
+  a,
+  isLast,
+}: {
+  q: string;
+  a: string;
+  isLast: boolean;
+}) {
+  return (
+    <details
+      className={
+        'group ' + (isLast ? '' : 'border-b border-(--color-hairline)')
+      }
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 text-left text-(--color-ink) hover:bg-black/[0.02] md:px-5 md:py-4">
+        <span className="text-base font-medium md:text-lg">{q}</span>
+        <span
+          aria-hidden
+          className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-(--color-amber) transition-transform duration-150 group-open:rotate-45"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </span>
+      </summary>
+      <div className="px-4 pb-4 text-sm leading-[1.55] text-(--color-body) md:px-5 md:pb-5">
+        {a}
+      </div>
+    </details>
   );
 }
 
