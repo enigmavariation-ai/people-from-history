@@ -3,19 +3,16 @@ import type { Screen } from '@/components/ProtoNav';
 
 type PrivacyScreenProps = { goTo: (s: Screen) => void };
 
-// Datenschutzerklärung / Privacy Policy.
-//
-// TEMPLATE based on what the app actually does today:
-//   * Auth via Supabase (email magic-link + Google OAuth)
-//   * Game state in Supabase (daily_plays, practice_state, runs, profiles)
-//   * Cloudflare Turnstile captcha on sign-in / leaderboard submit
-//   * Hosting via Vercel (US/edge)
-//
-// The operator must (a) fill in their contact details, (b) confirm
-// the data-processing-agreement (DPA) status with each subprocessor
-// (Supabase, Cloudflare, Vercel), (c) have a lawyer review the final
-// text. Auto-generated tools like datenschutz-generator.de are a
-// reasonable starting point.
+// Privacy policy / Datenschutzerklärung for People from History,
+// operated from Austria. Legal framework:
+//   - GDPR (EU 2016/679) — the substantive law for processing
+//   - Austrian DSG (Datenschutzgesetz) — national implementation
+//   - § 165 TKG 2021 — cookie / device-storage consent rule
+// Hosting and subprocessors:
+//   - Supabase on AWS in the EU (database, auth, file storage)
+//   - Vercel (web hosting / CDN)
+//   - Cloudflare (Turnstile captcha)
+//   - Google (only if the user signs in with Google OAuth)
 export function PrivacyScreen({ goTo }: PrivacyScreenProps) {
   return (
     <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
@@ -40,195 +37,302 @@ export function PrivacyScreen({ goTo }: PrivacyScreenProps) {
         >
           Privacy Policy
         </h1>
-        <p className="mb-8 text-sm text-(--color-muted)">
-          Datenschutzerklärung gemäß DSGVO / GDPR.
+        <p className="mb-10 text-sm text-(--color-muted)">
+          How People from History handles personal data, under the General
+          Data Protection Regulation (GDPR) and the Austrian DSG.
         </p>
 
-        <DraftNotice />
-
-        <Section title="1. Controller">
+        <Section title="1. Who we are">
           <p>
-            The party responsible for processing personal data on this site
-            (the "controller" under GDPR / DSGVO) is:
+            The controller responsible for processing your personal data
+            within the meaning of Art. 4 (7) GDPR is:
           </p>
-          <p className="mt-2">
-            {/* TODO: Operator's full legal name + address + email. */}
-            [Vorname Nachname]
+          <p className="mt-3">
+            Robert Fip
             <br />
-            [Straße und Hausnummer]
+            Apollogasse 9/3
             <br />
-            [PLZ Ort], Deutschland
+            1070 Vienna, Austria
             <br />
-            E-Mail:{' '}
-            <a className="text-(--color-amber) underline-offset-2 hover:underline" href="mailto:[email@example.com]">
-              [email@example.com]
+            Email:{' '}
+            <a
+              className="text-(--color-amber) underline-offset-2 hover:underline"
+              href="mailto:peoplefromhistorygame@gmail.com"
+            >
+              peoplefromhistorygame@gmail.com
             </a>
           </p>
+          <p className="mt-3">
+            People from History is operated as a personal, non-commercial
+            project. There is no separate data protection officer; please
+            address privacy enquiries directly to the email above.
+          </p>
         </Section>
 
-        <Section title="2. Personal data we process">
-          <p className="mb-2">When you use People from History we may process:</p>
-          <ul className="list-disc space-y-1 pl-5">
+        <Section title="2. What we collect, and why">
+          <p className="mb-2">
+            We try to collect as little as possible. Concretely:
+          </p>
+          <ul className="list-disc space-y-1.5 pl-5">
             <li>
-              <strong className="font-medium text-(--color-ink)">Account data:</strong>{' '}
-              email address (when you sign up via magic-link), Google profile
-              identifier (when you sign in with Google), and a stable user ID
-              issued by our authentication provider.
+              <strong className="font-medium text-(--color-ink)">
+                Account data
+              </strong>{' '}
+              — when you sign in: your email address (magic-link) or your
+              Google account identifier and basic profile (Google
+              sign-in). A stable user ID is issued by our authentication
+              provider so we can recognise you on return visits.
             </li>
             <li>
-              <strong className="font-medium text-(--color-ink)">Game data:</strong>{' '}
-              daily puzzle results (date, reveal %, hints used, figure ID,
-              outcome), Practice mode state (streak, figures seen, last
-              difficulty), Challenge run history (score, nickname, figures
-              played), and the chosen leaderboard nickname.
+              <strong className="font-medium text-(--color-ink)">
+                Game data
+              </strong>{' '}
+              — daily-puzzle results (date, reveal percentage, hints used,
+              figure ID, win/loss outcome), Practice-mode progress (current
+              streak, figures already seen, last difficulty), Challenge run
+              history (score, figures played, the nickname you chose), and
+              your chosen leaderboard nickname.
             </li>
             <li>
-              <strong className="font-medium text-(--color-ink)">Technical data:</strong>{' '}
-              session tokens and a captcha verification token, both used
-              solely to keep you signed in and to prevent automated abuse.
+              <strong className="font-medium text-(--color-ink)">
+                Technical data
+              </strong>{' '}
+              — short-lived authentication tokens so you stay signed in,
+              and a Cloudflare Turnstile verification token issued each
+              time you submit a sign-in or leaderboard form, used purely
+              to distinguish humans from bots.
+            </li>
+          </ul>
+          <p className="mt-3">
+            We do <strong className="font-medium text-(--color-ink)">not</strong>{' '}
+            collect IP-address logs of normal site visits, install
+            analytics, run advertising scripts, or share data with
+            marketing partners.
+          </p>
+        </Section>
+
+        <Section title="3. Legal basis (Art. 6 GDPR)">
+          <ul className="list-disc space-y-1.5 pl-5">
+            <li>
+              <strong className="font-medium text-(--color-ink)">
+                Art. 6 (1)(b) — performance of contract:
+              </strong>{' '}
+              we use your account and game data to actually run the game
+              for you (sign you in, remember your progress, sync across
+              devices, show your score on the leaderboard once you submit
+              a run).
+            </li>
+            <li>
+              <strong className="font-medium text-(--color-ink)">
+                Art. 6 (1)(f) — legitimate interest:
+              </strong>{' '}
+              the Cloudflare Turnstile captcha protects sign-in and the
+              leaderboard endpoints from automated abuse. Without it the
+              leaderboard would be trivial to spam.
+            </li>
+            <li>
+              <strong className="font-medium text-(--color-ink)">
+                Art. 6 (1)(a) — consent:
+              </strong>{' '}
+              currently not relied upon, because we do not use any
+              technology that requires it under § 165 TKG 2021 or Art. 5
+              (3) ePrivacy Directive (no analytics, no marketing
+              cookies). If that ever changes, we will ask for an explicit
+              opt-in first.
             </li>
           </ul>
         </Section>
 
-        <Section title="3. Purposes and legal basis">
-          <p className="mb-2">We process this data to:</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>operate the game and provide cross-device sync (Art. 6 (1)(b) GDPR — performance of contract);</li>
-            <li>display public leaderboards to other users (Art. 6 (1)(b) GDPR — your nickname and score, only after you submit a run);</li>
-            <li>prevent automated abuse of the sign-in and leaderboard endpoints (Art. 6 (1)(f) GDPR — legitimate interest in service integrity).</li>
-          </ul>
-        </Section>
-
-        <Section title="4. Processors / third parties">
-          <p className="mb-2">We use the following service providers to operate the site:</p>
-          <ul className="list-disc space-y-1 pl-5">
+        <Section title="4. Service providers (processors)">
+          <p className="mb-2">
+            We rely on the following service providers to run the site.
+            Each is a processor within the meaning of Art. 28 GDPR; we
+            have entered into the standard data-processing terms each
+            provider offers.
+          </p>
+          <ul className="list-disc space-y-1.5 pl-5">
             <li>
-              <strong className="font-medium text-(--color-ink)">Supabase</strong>{' '}
-              (database, authentication, file storage). All game and account
-              data is stored on infrastructure hosted by Amazon Web Services
-              in the European Union. A data-processing agreement (DPA) is in
-              place; see{' '}
+              <strong className="font-medium text-(--color-ink)">
+                Supabase
+              </strong>{' '}
+              — database, authentication, and file storage. All game and
+              account data is stored on infrastructure operated by Amazon
+              Web Services within the European Union. See{' '}
               <a
                 className="text-(--color-amber) underline-offset-2 hover:underline"
                 href="https://supabase.com/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Supabase Privacy
+                supabase.com/privacy
               </a>
               .
             </li>
             <li>
-              <strong className="font-medium text-(--color-ink)">Vercel</strong>{' '}
-              (web hosting / CDN); see{' '}
+              <strong className="font-medium text-(--color-ink)">
+                Vercel
+              </strong>{' '}
+              — web hosting and content delivery. Vercel's edge network
+              may handle requests outside the EU/EEA. See{' '}
               <a
                 className="text-(--color-amber) underline-offset-2 hover:underline"
                 href="https://vercel.com/legal/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Vercel Privacy
+                vercel.com/legal/privacy-policy
               </a>
               .
             </li>
             <li>
-              <strong className="font-medium text-(--color-ink)">Cloudflare</strong>{' '}
-              (Turnstile captcha + edge delivery); see{' '}
+              <strong className="font-medium text-(--color-ink)">
+                Cloudflare
+              </strong>{' '}
+              — Turnstile captcha. Cloudflare's bot-detection network is
+              global. See{' '}
               <a
                 className="text-(--color-amber) underline-offset-2 hover:underline"
                 href="https://www.cloudflare.com/privacypolicy/"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Cloudflare Privacy
+                cloudflare.com/privacypolicy
               </a>
               .
             </li>
             <li>
-              <strong className="font-medium text-(--color-ink)">Google</strong>{' '}
-              (only if you sign in with Google OAuth); see{' '}
+              <strong className="font-medium text-(--color-ink)">
+                Google
+              </strong>{' '}
+              — only relevant if you choose to sign in with Google. The
+              sign-in itself takes place on Google's servers. See{' '}
               <a
                 className="text-(--color-amber) underline-offset-2 hover:underline"
                 href="https://policies.google.com/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Google Privacy
+                policies.google.com/privacy
               </a>
               .
             </li>
           </ul>
-          <p className="mt-2">
-            Your account and game data is stored within the EU (Supabase on
-            AWS Europe). Some supporting services — Vercel's CDN edges,
-            Cloudflare's bot-detection network, and Google's OAuth servers
-            (only if you sign in with Google) — may process limited technical
-            data outside the EU/EEA. For those transfers we rely on the
-            standard contractual clauses (SCCs) and the EU-US Data Privacy
-            Framework, as applicable.
+          <p className="mt-3">
+            Your account and game data is stored within the EU (Supabase
+            on AWS Europe). Some supporting services — Vercel's CDN edges,
+            Cloudflare's bot-detection network, and Google's OAuth
+            servers, where used — may process limited technical data
+            outside the EU/EEA. For such transfers we rely on the
+            standard contractual clauses (SCCs) and, where applicable,
+            the EU–US Data Privacy Framework.
           </p>
         </Section>
 
-        <Section title="5. Cookies and local storage">
-          <p className="mb-2">We only use storage that is strictly necessary to run the game:</p>
-          <ul className="list-disc space-y-1 pl-5">
+        <Section title="5. Cookies and local storage (§ 165 TKG)">
+          <p className="mb-2">
+            We only store things on your device that are strictly
+            necessary to run the game. These do not require consent under
+            § 165 (3) TKG 2021 or Art. 5 (3) ePrivacy Directive:
+          </p>
+          <ul className="list-disc space-y-1.5 pl-5">
             <li>
-              <strong className="font-medium text-(--color-ink)">Local storage</strong>{' '}
-              for your daily streak, last-played puzzle, preferred difficulty,
-              and onboarding flags — kept on your device only.
+              <strong className="font-medium text-(--color-ink)">
+                Local storage
+              </strong>{' '}
+              for your daily streak, last-played puzzle, preferred
+              difficulty, and one-off onboarding flags. This stays on
+              your device.
             </li>
             <li>
-              <strong className="font-medium text-(--color-ink)">Authentication tokens</strong>{' '}
+              <strong className="font-medium text-(--color-ink)">
+                Authentication tokens
+              </strong>{' '}
               issued by Supabase so you stay signed in across visits.
             </li>
             <li>
-              <strong className="font-medium text-(--color-ink)">Cloudflare Turnstile</strong>{' '}
-              may set a short-lived cookie when you sign in or submit a
-              leaderboard run, purely for bot detection.
+              <strong className="font-medium text-(--color-ink)">
+                Cloudflare Turnstile
+              </strong>{' '}
+              may set a short-lived cookie or local-storage entry when
+              you sign in or submit a leaderboard run, purely for bot
+              detection.
             </li>
           </ul>
-          <p className="mt-2">
-            We do <strong className="font-medium text-(--color-ink)">not</strong>{' '}
-            use analytics, advertising, or third-party tracking cookies. As
-            none of the above are used for marketing or profiling, no
-            additional consent is required under § 25 (2) TTDSG / Art. 5 (3)
-            ePrivacy Directive.
+          <p className="mt-3">
+            We do{' '}
+            <strong className="font-medium text-(--color-ink)">not</strong>{' '}
+            use analytics cookies, advertising cookies, tracking pixels,
+            social-media plug-ins, or any third-party profiling. Because
+            of that, no cookie-consent banner is required by law — we
+            still surface a one-time informational notice so you know
+            what is stored.
           </p>
         </Section>
 
         <Section title="6. Retention">
           <p>
-            Account and game data are stored for as long as your account is
-            active. If you delete your account (see below) we remove your
-            personal data within 30 days, except where we are required by law
-            to keep it longer.
+            Account and game data are retained for as long as your
+            account is active. When you delete your account (see
+            Section 8), the underlying records are removed immediately
+            and the cascading database cleanup runs within the same
+            request. Database backups are rotated within 30 days, after
+            which deleted data is no longer recoverable. We do not retain
+            personal data beyond what is technically necessary to keep
+            the service running.
           </p>
         </Section>
 
         <Section title="7. Your rights">
-          <p className="mb-2">Under the GDPR / DSGVO you have the right to:</p>
-          <ul className="list-disc space-y-1 pl-5">
+          <p className="mb-2">
+            Under the GDPR you have the right to:
+          </p>
+          <ul className="list-disc space-y-1.5 pl-5">
             <li>access the personal data we hold about you (Art. 15);</li>
             <li>have inaccurate data corrected (Art. 16);</li>
             <li>have your data erased (Art. 17);</li>
             <li>restrict processing (Art. 18);</li>
-            <li>receive a copy of your data in a machine-readable format (Art. 20);</li>
-            <li>object to processing based on legitimate interest (Art. 21);</li>
-            <li>lodge a complaint with a supervisory authority — for example, the data protection authority of your federal state in Germany.</li>
+            <li>
+              receive a copy of your data in a structured, machine-readable
+              format and have it transmitted to another controller
+              (Art. 20);
+            </li>
+            <li>
+              object to processing based on legitimate interest (Art. 21);
+            </li>
+            <li>
+              withdraw any consent at any time, without affecting the
+              lawfulness of processing carried out before withdrawal
+              (Art. 7 (3)).
+            </li>
           </ul>
-          <p className="mt-2">
-            To exercise any of these rights, email us at{' '}
-            <a className="text-(--color-amber) underline-offset-2 hover:underline" href="mailto:[email@example.com]">
-              [email@example.com]
+          <p className="mt-3">
+            To exercise any of these rights, email{' '}
+            <a
+              className="text-(--color-amber) underline-offset-2 hover:underline"
+              href="mailto:peoplefromhistorygame@gmail.com"
+            >
+              peoplefromhistorygame@gmail.com
+            </a>{' '}
+            from the address linked to your account. You also have the
+            right to lodge a complaint with a supervisory authority — for
+            users in Austria this is the{' '}
+            <a
+              className="text-(--color-amber) underline-offset-2 hover:underline"
+              href="https://www.dsb.gv.at/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Datenschutzbehörde (dsb.gv.at)
             </a>
-            .
+            ; users elsewhere in the EU may contact the supervisory
+            authority of their member state.
           </p>
         </Section>
 
         <Section title="8. Deleting your account">
           <p>
-            You can delete your account and all associated game data at any
-            time from your{' '}
+            You can delete your account and all associated game data at
+            any time from your{' '}
             <button
               type="button"
               onClick={() => goTo('profile')}
@@ -238,22 +342,59 @@ export function PrivacyScreen({ goTo }: PrivacyScreenProps) {
             </button>
             : open Profile and use the "Delete my account" button under
             "Danger zone". Deletion is immediate and irreversible — your
-            email, leaderboard nickname, daily play history, Practice
-            progress, and Challenge runs are removed from our database
-            within the same request.
+            email, leaderboard nickname, daily-play history,
+            Practice-mode progress, and Challenge runs are removed from
+            our database within the same request. Backup copies are
+            rotated out within 30 days.
           </p>
-          <p className="mt-2">
-            If you've lost access to your account and can't sign in, email{' '}
-            <a className="text-(--color-amber) underline-offset-2 hover:underline" href="mailto:[email@example.com]">
-              [email@example.com]
+          <p className="mt-3">
+            If you have lost access to your account and cannot sign in,
+            email{' '}
+            <a
+              className="text-(--color-amber) underline-offset-2 hover:underline"
+              href="mailto:peoplefromhistorygame@gmail.com"
+            >
+              peoplefromhistorygame@gmail.com
             </a>{' '}
-            from the address linked to your account and we'll delete it on
+            from the address that is linked to it and we will delete it on
             your behalf.
           </p>
         </Section>
 
+        <Section title="9. Security">
+          <p>
+            Traffic is served over HTTPS. Database access is restricted by
+            row-level security policies so each account can only read and
+            modify its own rows; sensitive operations (such as account
+            deletion or curator edits) run through audited server-side
+            functions rather than direct table writes. We do not store
+            passwords — sign-in is handled via magic-link email or Google
+            OAuth.
+          </p>
+        </Section>
+
+        <Section title="10. Children">
+          <p>
+            People from History is suitable for general audiences but is
+            not directed at children under 14. We do not knowingly
+            collect personal data from children under 14. If you believe
+            a child has provided us with personal data, please contact us
+            and we will remove it.
+          </p>
+        </Section>
+
+        <Section title="11. Changes to this policy">
+          <p>
+            We may update this policy from time to time to reflect changes
+            in the service or in applicable law. The "last reviewed" date
+            below indicates when the current version took effect. If the
+            change is material we will surface a notice in the app
+            before it applies to existing users.
+          </p>
+        </Section>
+
         <p className="mt-10 text-xs text-(--color-muted)">
-          Stand / Last reviewed: TODO — set the date of the last legal review.
+          Last reviewed: 31 May 2026.
         </p>
       </div>
     </div>
@@ -268,7 +409,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-6">
+    <section className="mb-7">
       <h2
         className="mb-2"
         style={{
@@ -283,17 +424,5 @@ function Section({
       </h2>
       <div className="text-sm leading-[1.55] text-(--color-body)">{children}</div>
     </section>
-  );
-}
-
-function DraftNotice() {
-  return (
-    <div className="mb-8 rounded-card border border-dashed border-(--color-amber) bg-(--color-amber-soft)/30 px-4 py-3 text-xs leading-relaxed text-(--color-body)">
-      <strong className="font-medium text-(--color-ink)">Draft template.</strong>{' '}
-      This policy reflects what the app does, but the wording must be
-      reviewed by a German data-protection lawyer (or generated via a tool
-      such as datenschutz-generator.de) before publishing to an EU audience.
-      Replace bracketed placeholders with the operator's real details.
-    </div>
   );
 }
