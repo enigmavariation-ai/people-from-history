@@ -10,6 +10,7 @@ import {
   todayIsoDate,
   updateDailyStreak,
 } from '@/lib/daily';
+import { MAX_GUESSES_PER_ROUND } from '@/lib/gameRules';
 import { matches } from '@/lib/matching';
 import { scoreGuess } from '@/lib/scoring';
 import { pushDailyPlay } from '@/lib/syncState';
@@ -77,6 +78,7 @@ export function DailyGame({ goTo }: DailyGameProps) {
   const [usedHints, setUsedHints] = useState<HintType[]>([]);
   const [outcome, setOutcome] = useState<Outcome>('playing');
   const [pulse, setPulse] = useState(false);
+  const [guessesUsed, setGuessesUsed] = useState(0);
 
   const visualReveal = outcome === 'playing' ? reveal : 100;
   const potential = scoreGuess(reveal, usedHints);
@@ -97,6 +99,19 @@ export function DailyGame({ goTo }: DailyGameProps) {
       });
       setPulse(true);
       setTimeout(() => setPulse(false), 1300);
+      return;
+    }
+
+    const next = guessesUsed + 1;
+    setGuessesUsed(next);
+    if (next >= MAX_GUESSES_PER_ROUND) {
+      setOutcome('lost');
+      const metaParts = [figure.era, figure.field, figure.region].filter(Boolean);
+      setFeedback({
+        kind: 'reveal',
+        text: `Out of guesses — it was ${figure.name}.`,
+        sub: metaParts.length > 0 ? metaParts.join(' · ') : undefined,
+      });
     } else {
       setFeedback({
         kind: 'error',
@@ -190,6 +205,8 @@ export function DailyGame({ goTo }: DailyGameProps) {
       onGiveUp={giveUp}
       onNext={finishAndGoToResult}
       footMeta={null}
+      guessesUsed={guessesUsed}
+      guessesMax={MAX_GUESSES_PER_ROUND}
       scoreLabel="Score"
       streakLabel="Day streak"
       nextLabel="See result"

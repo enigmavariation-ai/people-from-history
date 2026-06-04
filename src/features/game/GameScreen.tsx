@@ -6,6 +6,7 @@ import { WinCelebration } from '@/components/WinCelebration';
 import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
 import { isPermanent } from '@/lib/auth';
+import { MAX_GUESSES_PER_ROUND } from '@/lib/gameRules';
 import { matches } from '@/lib/matching';
 import {
   loadNumber,
@@ -114,6 +115,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
   const [seenIds, setSeenIds] = useState<Set<string>>(() => loadStringSet('seen'));
   const [outcome, setOutcome] = useState<Outcome>('playing');
   const [pulse, setPulse] = useState(false);
+  const [guessesUsed, setGuessesUsed] = useState(0);
 
   const pickFigure = useCallback(() => {
     const next = selectNextFigure(figures, difficulty, seenIds, figure?.id ?? null);
@@ -124,6 +126,7 @@ export function GameScreen({ goTo }: GameScreenProps) {
     setFeedback(NEUTRAL_FEEDBACK);
     setUsedHints([]);
     setOutcome('playing');
+    setGuessesUsed(0);
     setRound((r) => {
       const nextRound = r + 1;
       saveNumber('round', nextRound);
@@ -170,9 +173,27 @@ export function GameScreen({ goTo }: GameScreenProps) {
       setPulse(true);
       setTimeout(() => setPulse(false), 1300);
       pushPracticeState();
+      return;
+    }
+
+    // Wrong guess — count it and reset the streak. When the count
+    // hits the cap the round auto-ends as a loss (same path as
+    // give-up: reveals the answer, marks seen, persists state).
+    const next = guessesUsed + 1;
+    setGuessesUsed(next);
+    setStreak(0);
+    saveNumber('streak', 0);
+    if (next >= MAX_GUESSES_PER_ROUND) {
+      setOutcome('lost');
+      const metaParts = [figure.era, figure.field, figure.region].filter(Boolean);
+      setFeedback({
+        kind: 'reveal',
+        text: `Out of guesses — it was ${figure.name}.`,
+        sub: metaParts.length > 0 ? metaParts.join(' · ') : undefined,
+      });
+      markSeen(figure.id);
+      pushPracticeState();
     } else {
-      setStreak(0);
-      saveNumber('streak', 0);
       setFeedback({
         kind: 'error',
         text: 'Not quite — try revealing more, or use a hint.',
@@ -248,6 +269,8 @@ export function GameScreen({ goTo }: GameScreenProps) {
       onGiveUp={giveUp}
       onNext={next}
       footMeta={null}
+      guessesUsed={guessesUsed}
+      guessesMax={MAX_GUESSES_PER_ROUND}
       practiceProgress={{ seen: seenIds.size, total: figures.length }}
     />
   );
@@ -291,6 +314,10 @@ export type RoundChromeProps = {
   onGiveUp: () => void;
   onNext: () => void;
   footMeta: string | null;
+  // Wrong-guess counter for this round. Used to render a "N of M
+  // guesses" indicator near the input. Independent of `usedHints`.
+  guessesUsed: number;
+  guessesMax: number;
   // Mode-specific labels and optional slots
   scoreLabel?: string;     // defaults "Score" — Challenge uses "Total"
   streakLabel?: string;    // defaults "Streak" — Challenge uses "Tier streak"
@@ -496,10 +523,13 @@ function MobileTree(
     usedHints,
     onUseHint,
     footMeta,
+    guessesUsed,
+    guessesMax,
     topInsert,
     stageContent,
   } = props;
   const isPractice = mode === 'practice';
+  const guessesLeft = Math.max(0, guessesMax - guessesUsed);
 
   return (
     <div className="flex h-[calc(100svh-var(--app-bar-h))] flex-col bg-(--color-bg) md:hidden">
@@ -610,6 +640,9 @@ function MobileTree(
             Guess
           </button>
         </form>
+        {outcome === 'playing' && (
+          <GuessesLeftPill used={guessesUsed} max={guessesMax} left={guessesLeft} />
+        )}
 
         {/* The primary action (Give up / Next) has been moved to a
             pill at the bottom-right of the stage so mobile players
@@ -736,6 +769,8 @@ function DesktopTree(
     onGiveUp,
     onNext,
     footMeta,
+    guessesUsed,
+    guessesMax,
     scoreLabel,
     streakLabel,
     nextLabel,
@@ -881,7 +916,7 @@ function DesktopTree(
             )}
 
             <DossierHeader>Your guess</DossierHeader>
-            <form onSubmit={onSubmit} className="mb-4 flex gap-2">
+            <form onSubmit={onSubmit} className="mb-2 flex gap-2">
               <input
                 type="text"
                 placeholder="Who is this person?"
@@ -898,6 +933,15 @@ function DesktopTree(
                 Guess
               </button>
             </form>
+            {outcome === 'playing' && (
+              <div className="mb-4">
+                <GuessesLeftPill
+                  used={guessesUsed}
+                  max={guessesMax}
+                  left={Math.max(0, guessesMax - guessesUsed)}
+                />
+              </div>
+            )}
 
             <FeedbackBox feedback={feedback} />
 
@@ -950,6 +994,40 @@ function DesktopTree(
 }
 
 // ====== Subcomponents ======================================================
+
+// Small caption next to / under the guess form telling the player
+// how many tries remain this round. Amber when at full / near full,
+// shifts to a warning tone in the last 2 tries.
+function GuessesLeftPill({
+  used,
+  max,
+  left,
+}: {
+  used: number;
+  max: number;
+  left: number;
+}) {
+  const lowWarn = left <= 2 && left > 0;
+  const exhausted = left === 0;
+  const labelTone = exhausted
+    ? 'text-(--color-error)'
+    : lowWarn
+      ? 'text-(--color-amber)'
+      : 'text-(--color-muted)';
+  return (
+    <div
+      className={
+        'font-mono text-[10px] uppercase tracking-[0.12em] ' + labelTone
+      }
+      role="status"
+      aria-live="polite"
+    >
+      {exhausted
+        ? 'No guesses left'
+        : `${used} of ${max} guesses used · ${left} left`}
+    </div>
+  );
+}
 
 function PillStat({
   label,

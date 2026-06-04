@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { RoundChrome } from '@/features/game/GameScreen';
+import { MAX_GUESSES_PER_ROUND } from '@/lib/gameRules';
 import { matches } from '@/lib/matching';
 import { scoreChallengeRound } from '@/lib/scoring';
 import { saveString } from '@/lib/storage';
@@ -82,6 +83,7 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
   const [usedHints, setUsedHints] = useState<HintType[]>([]);
   const [outcome, setOutcome] = useState<Outcome>('playing');
   const [pulse, setPulse] = useState(false);
+  const [guessesUsed, setGuessesUsed] = useState(0);
 
   const usedFigureIds = new Set(results.map((r) => r.figureId));
 
@@ -110,6 +112,21 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
       });
       setPulse(true);
       setTimeout(() => setPulse(false), 1300);
+      return;
+    }
+
+    // Wrong guess — count it. When the count hits the cap the round
+    // auto-ends with the same outcome as a give-up.
+    const next = guessesUsed + 1;
+    setGuessesUsed(next);
+    if (next >= MAX_GUESSES_PER_ROUND) {
+      setOutcome('lost');
+      const metaParts = [figure.era, figure.field, figure.region].filter(Boolean);
+      setFeedback({
+        kind: 'reveal',
+        text: `Out of guesses — it was ${figure.name}.`,
+        sub: metaParts.length > 0 ? metaParts.join(' · ') : undefined,
+      });
     } else {
       setFeedback({
         kind: 'error',
@@ -192,6 +209,7 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
     setFeedback(NEUTRAL_FEEDBACK);
     setUsedHints([]);
     setOutcome('playing');
+    setGuessesUsed(0);
   };
 
   const roundNumber = results.length + 1;
@@ -239,6 +257,8 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
       onGiveUp={giveUp}
       onNext={advance}
       footMeta={`${roundsRemaining} round${roundsRemaining === 1 ? '' : 's'} left`}
+      guessesUsed={guessesUsed}
+      guessesMax={MAX_GUESSES_PER_ROUND}
       scoreLabel="Total"
       streakLabel="Tier streak"
       nextLabel={isLastRound ? 'See results' : 'Next figure'}
