@@ -81,7 +81,13 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
   // Run-level state (reset per challenge).
   const [results, setResults] = useState<RoundResult[]>([]);
   const [tier, setTier] = useState<Difficulty>('easy');
+  // `tierStreak` is internal bookkeeping for tier climbing — it
+  // resets when the tier bumps. `correctStreak` is the visible
+  // "N in a row" the player sees in the score pill; it only
+  // resets on a loss / give-up so a tier climb doesn't make the
+  // streak digit appear to jump back to 0 mid-run.
   const [tierStreak, setTierStreak] = useState(0);
+  const [correctStreak, setCorrectStreak] = useState(0);
 
   // Round-level state.
   const [figure, setFigure] = useState<Figure | null>(null);
@@ -192,17 +198,21 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
     }
 
     let newTier = tier;
-    let newStreak = tierStreak;
+    let newTierStreak = tierStreak;
+    let newCorrectStreak = correctStreak;
     if (outcome === 'won') {
-      newStreak = tierStreak + 1;
-      if (newStreak >= STREAK_TO_BUMP && tier !== 'hard') {
+      newCorrectStreak = correctStreak + 1;
+      newTierStreak = tierStreak + 1;
+      if (newTierStreak >= STREAK_TO_BUMP && tier !== 'hard') {
         newTier = nextTier(tier);
-        newStreak = 0;
+        newTierStreak = 0;
       }
     } else {
-      // Lost (gave up): drop a tier and reset streak. Easy floors.
+      // Lost (gave up or out of guesses): drop a tier and reset
+      // both counters. Easy floors.
       newTier = tierBelow(tier);
-      newStreak = 0;
+      newTierStreak = 0;
+      newCorrectStreak = 0;
     }
 
     const nextUsed = new Set(usedFigureIds);
@@ -212,7 +222,8 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
 
     setResults(newResults);
     setTier(newTier);
-    setTierStreak(newStreak);
+    setTierStreak(newTierStreak);
+    setCorrectStreak(newCorrectStreak);
     setFigure(nextFigure);
     setReveal(10);
     setGuess('');
@@ -255,7 +266,7 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
       }}
       potential={potential}
       score={runningTotal}
-      streak={tierStreak}
+      streak={correctStreak}
       outcome={outcome}
       pulse={pulse}
       guess={guess}
@@ -270,7 +281,7 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
       guessesUsed={guessesUsed}
       guessesMax={MAX_GUESSES_PER_ROUND}
       scoreLabel="Total"
-      streakLabel="Tier streak"
+      streakLabel="Streak"
       nextLabel={isLastRound ? 'See results' : 'Next figure'}
       topInsert={<ProgressDots results={results} current={roundNumber} total={TOTAL_ROUNDS} />}
     />

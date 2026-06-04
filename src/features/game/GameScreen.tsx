@@ -338,7 +338,7 @@ export type RoundChromeProps = {
   guessesMax: number;
   // Mode-specific labels and optional slots
   scoreLabel?: string;     // defaults "Score" — Challenge uses "Total"
-  streakLabel?: string;    // defaults "Streak" — Challenge uses "Tier streak"
+  streakLabel?: string;    // defaults "Streak"; can be overridden per mode (e.g. Daily uses "Day streak")
   nextLabel?: string;      // defaults "Next figure" — Challenge final round uses "See results"
   topInsert?: React.ReactNode; // optional element rendered below top bar, above body (e.g. ProgressDots)
   // Practice-mode dossier stats (figures seen / total). Only rendered when mode === 'practice'.
