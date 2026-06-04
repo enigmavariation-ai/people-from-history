@@ -26,7 +26,7 @@ export function AuditGallery({ goTo }: AuditGalleryProps) {
   // Local override map so saves reflect immediately without refetching
   // the figures list. Keyed by id.
   const [overrides, setOverrides] = useState<
-    Record<string, Pick<Figure, 'focal_x' | 'focal_y' | 'start_size'>>
+    Record<string, Pick<Figure, 'focal_x' | 'focal_y' | 'start_size' | 'focal_alts'>>
   >({});
 
   const admin = isAdmin(user);

@@ -1,5 +1,15 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
+// Alternative facial focal point for a figure. Used by the reveal
+// picker to vary which feature the round starts cropped on, so the
+// same face doesn't always start at the same eye / brow / lip.
+export type FocalAlt = {
+  x: number;
+  y: number;
+  start_size: number;
+  note?: string;
+};
+
 export type Figure = {
   id: string;
   name: string;
@@ -8,6 +18,7 @@ export type Figure = {
   focal_x: number;
   focal_y: number;
   start_size: number;
+  focal_alts: FocalAlt[];
   focal_note: string;
   difficulty: Difficulty;
   era: string;

@@ -11,6 +11,7 @@ import {
   updateDailyStreak,
 } from '@/lib/daily';
 import { markShown } from '@/lib/figureCooldown';
+import { dailyFocalSeed } from '@/lib/focalPicker';
 import { MAX_GUESSES_PER_ROUND } from '@/lib/gameRules';
 import { matches } from '@/lib/matching';
 import { scoreGuess } from '@/lib/scoring';
@@ -45,6 +46,7 @@ const EMPTY_FIGURE: Figure = {
   focal_x: 0.5,
   focal_y: 0.4,
   start_size: 0.15,
+  focal_alts: [],
   focal_note: '',
   difficulty: 'easy',
   era: '',
@@ -218,6 +220,7 @@ export function DailyGame({ goTo }: DailyGameProps) {
       scoreLabel="Score"
       streakLabel="Day streak"
       nextLabel="See result"
+      focalSeed={dailyFocalSeed(today)}
     />
   );
 }

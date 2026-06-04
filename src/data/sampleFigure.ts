@@ -9,6 +9,7 @@ export const sampleFigure: Figure & { image_url: string } = {
   focal_y: 0.62,
   start_size: 0.15,
   focal_note: 'mustache',
+  focal_alts: [],
   difficulty: 'easy',
   era: '',
   field: '',

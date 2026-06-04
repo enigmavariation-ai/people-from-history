@@ -287,6 +287,7 @@ const EMPTY_FIGURE: Figure = {
   focal_x: 0.5,
   focal_y: 0.4,
   start_size: 0.15,
+  focal_alts: [],
   focal_note: '',
   difficulty: 'easy',
   era: '',

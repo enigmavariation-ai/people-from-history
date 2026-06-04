@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { supabase } from '@/lib/supabase';
-import type { Figure } from '@/types/figure';
+import type { Figure, FocalAlt } from '@/types/figure';
 
 type ImgDim = { w: number; h: number };
 
@@ -10,7 +10,9 @@ type FigureEditorProps = {
   onClose: () => void;
   // Called with the updated focal values after a successful save so
   // the audit list can update without refetching.
-  onSaved: (next: Pick<Figure, 'focal_x' | 'focal_y' | 'start_size'>) => void;
+  onSaved: (
+    next: Pick<Figure, 'focal_x' | 'focal_y' | 'start_size' | 'focal_alts'>,
+  ) => void;
 };
 
 // Per-figure focal-point editor. Drag the amber box on the portrait
@@ -25,6 +27,7 @@ export function FigureEditor({ figure, onClose, onSaved }: FigureEditorProps) {
   const [focalX, setFocalX] = useState(figure.focal_x);
   const [focalY, setFocalY] = useState(figure.focal_y);
   const [startSize, setStartSize] = useState(figure.start_size);
+  const [alts, setAlts] = useState<FocalAlt[]>(() => figure.focal_alts ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Natural image dimensions, captured on load. The editor sizes the
@@ -81,22 +84,64 @@ export function FigureEditor({ figure, onClose, onSaved }: FigureEditorProps) {
     setSaving(true);
     setError(null);
     try {
+      const cleanedAlts: FocalAlt[] = alts.map((a) => ({
+        x: Number(a.x.toFixed(4)),
+        y: Number(a.y.toFixed(4)),
+        start_size: Number(a.start_size.toFixed(4)),
+        ...(a.note ? { note: a.note } : {}),
+      }));
       const { error } = await supabase
         .from('figures')
         .update({
           focal_x: Number(focalX.toFixed(4)),
           focal_y: Number(focalY.toFixed(4)),
           start_size: Number(startSize.toFixed(4)),
+          focal_alts: cleanedAlts,
         })
         .eq('id', figure.id);
       if (error) throw error;
-      onSaved({ focal_x: focalX, focal_y: focalY, start_size: startSize });
+      onSaved({
+        focal_x: focalX,
+        focal_y: focalY,
+        start_size: startSize,
+        focal_alts: cleanedAlts,
+      });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save.");
     } finally {
       setSaving(false);
     }
+  }
+
+  function addCurrentAsAlt() {
+    setAlts((prev) => [
+      ...prev,
+      {
+        x: Number(focalX.toFixed(4)),
+        y: Number(focalY.toFixed(4)),
+        start_size: Number(startSize.toFixed(4)),
+        note: '',
+      },
+    ]);
+  }
+
+  function removeAlt(idx: number) {
+    setAlts((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function setAltNote(idx: number, note: string) {
+    setAlts((prev) =>
+      prev.map((a, i) => (i === idx ? { ...a, note } : a)),
+    );
+  }
+
+  function loadAltAsPrimary(idx: number) {
+    const a = alts[idx];
+    if (!a) return;
+    setFocalX(a.x);
+    setFocalY(a.y);
+    setStartSize(a.start_size);
   }
 
   // Box in % of stage dimensions for the overlay outline.
@@ -212,6 +257,59 @@ export function FigureEditor({ figure, onClose, onSaved }: FigureEditorProps) {
             <NumericRow label="focal_x" value={focalX} min={0} max={1} step={0.01} onChange={setFocalX} />
             <NumericRow label="focal_y" value={focalY} min={0} max={1} step={0.01} onChange={setFocalY} />
             <NumericRow label="start_size" value={startSize} min={0.1} max={0.2} step={0.005} onChange={setStartSize} />
+
+            <div className="border-t border-(--color-rule) pt-3">
+              <div className="mb-2 flex items-baseline justify-between">
+                <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-muted)">
+                  Alternate focals
+                </div>
+                <button
+                  onClick={addCurrentAsAlt}
+                  className="inline-flex h-7 items-center gap-1 rounded-button border border-(--color-hairline-strong) bg-white px-2.5 text-[11px] font-medium text-(--color-body) hover:bg-(--color-bg)"
+                >
+                  + Add current as alt
+                </button>
+              </div>
+              {alts.length === 0 ? (
+                <div className="text-[11px] italic text-(--color-muted)">
+                  No alts — game always reveals from the primary focal. Add
+                  facial features (other eye, ear, brow, lip) so repeat
+                  appearances start from different spots.
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-1.5">
+                  {alts.map((a, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center gap-2 rounded-card border border-(--color-hairline) bg-white px-2.5 py-1.5"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => loadAltAsPrimary(i)}
+                        title="Load this alt back into the primary controls"
+                        className="tabular-nums font-mono text-[11px] text-(--color-amber) hover:underline"
+                      >
+                        ({a.x.toFixed(2)}, {a.y.toFixed(2)})
+                      </button>
+                      <input
+                        type="text"
+                        value={a.note ?? ''}
+                        onChange={(e) => setAltNote(i, e.currentTarget.value)}
+                        placeholder="feature (e.g. left eye)"
+                        className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1.5 py-1 text-[12px] text-(--color-body) placeholder:text-(--color-muted) focus:border-(--color-hairline) focus:outline-none"
+                      />
+                      <button
+                        onClick={() => removeAlt(i)}
+                        aria-label="Remove alt"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded text-(--color-muted) hover:bg-(--color-bg) hover:text-(--color-error)"
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <div className="mt-auto flex items-center justify-end gap-2 border-t border-(--color-rule) pt-3">
               {error && (

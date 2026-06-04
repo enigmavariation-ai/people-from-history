@@ -7,6 +7,7 @@ import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
 import { isPermanent } from '@/lib/auth';
 import { getRecentIds, markShown } from '@/lib/figureCooldown';
+import { pickRoundFocal } from '@/lib/focalPicker';
 import { MAX_GUESSES_PER_ROUND } from '@/lib/gameRules';
 import { matches } from '@/lib/matching';
 import {
@@ -342,6 +343,10 @@ export type RoundChromeProps = {
   topInsert?: React.ReactNode; // optional element rendered below top bar, above body (e.g. ProgressDots)
   // Practice-mode dossier stats (figures seen / total). Only rendered when mode === 'practice'.
   practiceProgress?: { seen: number; total: number };
+  // If provided, the focal-rotation pick is deterministic — used by
+  // Daily so all players see the same starting crop on a given UTC
+  // day. Omit in Practice / Challenge for a random pick per round.
+  focalSeed?: number;
 };
 
 // Three-step quick walkthrough for first-time players. Runs once per
@@ -386,8 +391,17 @@ export function RoundChrome(props: RoundChromeProps) {
     streakLabel = 'Streak',
     nextLabel = 'Next figure',
     topInsert,
+    focalSeed,
   } = props;
   const isPractice = mode === 'practice';
+  // Pick a focal once per figure (deterministic if focalSeed is set,
+  // random otherwise). Memoising on figure.id keeps the pick stable
+  // through reveals and the win celebration; the next round mounts
+  // a different figure and the memo recomputes.
+  const roundFocal = useMemo(
+    () => pickRoundFocal(figure, focalSeed),
+    [figure.id, figure.focal_x, figure.focal_y, figure.start_size, focalSeed],
+  );
   // The win pulse is set true briefly after every correct guess. A
   // streak milestone is one of those wins where the streak just
   // crossed into "noteworthy" territory (≥ 2). We use a key trick
@@ -417,8 +431,8 @@ export function RoundChrome(props: RoundChromeProps) {
       <CropStage
         key={figure.id}
         imageUrl={figure.image_url ?? sampleFigure.image_url}
-        focal={{ x: figure.focal_x, y: figure.focal_y }}
-        startSize={figure.start_size}
+        focal={{ x: roundFocal.x, y: roundFocal.y }}
+        startSize={roundFocal.startSize}
         revealPct={visualReveal}
       />
       {/* Mobile-only pill overlays. Practice hides the score-side pills
