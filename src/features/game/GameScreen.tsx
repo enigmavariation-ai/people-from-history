@@ -6,6 +6,7 @@ import { WinCelebration } from '@/components/WinCelebration';
 import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
 import { isPermanent } from '@/lib/auth';
+import { getRecentIds, markShown } from '@/lib/figureCooldown';
 import { MAX_GUESSES_PER_ROUND } from '@/lib/gameRules';
 import { matches } from '@/lib/matching';
 import {
@@ -79,11 +80,20 @@ function selectNextFigure(
   difficulty: Difficulty,
   seen: Set<string>,
   excludeId: string | null,
+  cooldown: ReadonlySet<string>,
 ): Figure | null {
-  const filteredByDifficulty = pool.filter((f) => f.difficulty === difficulty);
-  const fresh = filteredByDifficulty.filter((f) => !seen.has(f.id) && f.id !== excludeId);
-  if (fresh.length > 0) return pickRandom(fresh);
-  const sameDiff = filteredByDifficulty.filter((f) => f.id !== excludeId);
+  const sameTier = pool.filter((f) => f.difficulty === difficulty);
+  // Preferred: not in seen, not in cooldown, not the just-shown
+  // figure. Then fall back step by step.
+  const freshest = sameTier.filter(
+    (f) => !seen.has(f.id) && !cooldown.has(f.id) && f.id !== excludeId,
+  );
+  if (freshest.length > 0) return pickRandom(freshest);
+  const unseenIgnoringCooldown = sameTier.filter(
+    (f) => !seen.has(f.id) && f.id !== excludeId,
+  );
+  if (unseenIgnoringCooldown.length > 0) return pickRandom(unseenIgnoringCooldown);
+  const sameDiff = sameTier.filter((f) => f.id !== excludeId);
   if (sameDiff.length > 0) return pickRandom(sameDiff);
   const anyOther = pool.filter((f) => f.id !== excludeId);
   if (anyOther.length > 0) return pickRandom(anyOther);
@@ -118,9 +128,16 @@ export function GameScreen({ goTo }: GameScreenProps) {
   const [guessesUsed, setGuessesUsed] = useState(0);
 
   const pickFigure = useCallback(() => {
-    const next = selectNextFigure(figures, difficulty, seenIds, figure?.id ?? null);
+    const next = selectNextFigure(
+      figures,
+      difficulty,
+      seenIds,
+      figure?.id ?? null,
+      getRecentIds(),
+    );
     if (!next) return;
     setFigure(next);
+    markShown(next.id);
     setReveal(10);
     setGuess('');
     setFeedback(NEUTRAL_FEEDBACK);

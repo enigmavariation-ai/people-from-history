@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { RoundChrome } from '@/features/game/GameScreen';
+import { getRecentIds, markShown } from '@/lib/figureCooldown';
 import { MAX_GUESSES_PER_ROUND } from '@/lib/gameRules';
 import { matches } from '@/lib/matching';
 import { scoreChallengeRound } from '@/lib/scoring';
@@ -59,10 +60,17 @@ function selectFigure(
   pool: Figure[],
   tier: Difficulty,
   usedIds: ReadonlySet<string>,
+  cooldown: ReadonlySet<string>,
 ): Figure | null {
   const sameTier = pool.filter((f) => f.difficulty === tier);
-  const fresh = sameTier.filter((f) => !usedIds.has(f.id));
-  if (fresh.length > 0) return pickRandom(fresh);
+  // First try: not used this run, not in cross-mode cooldown.
+  const freshest = sameTier.filter(
+    (f) => !usedIds.has(f.id) && !cooldown.has(f.id),
+  );
+  if (freshest.length > 0) return pickRandom(freshest);
+  // Then: ignore cooldown but keep the per-run exclusion.
+  const freshThisRun = sameTier.filter((f) => !usedIds.has(f.id));
+  if (freshThisRun.length > 0) return pickRandom(freshThisRun);
   if (sameTier.length > 0) return pickRandom(sameTier);
   return pickRandom(pool);
 }
@@ -88,9 +96,10 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
   const usedFigureIds = new Set(results.map((r) => r.figureId));
 
   const pickFirstFigure = useCallback(() => {
-    const picked = selectFigure(figures, 'easy', new Set());
+    const picked = selectFigure(figures, 'easy', new Set(), getRecentIds());
     if (!picked) return;
     setFigure(picked);
+    markShown(picked.id);
   }, [figures]);
 
   useEffect(() => {
@@ -198,7 +207,8 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
 
     const nextUsed = new Set(usedFigureIds);
     nextUsed.add(figure.id);
-    const nextFigure = selectFigure(figures, newTier, nextUsed);
+    const nextFigure = selectFigure(figures, newTier, nextUsed, getRecentIds());
+    if (nextFigure) markShown(nextFigure.id);
 
     setResults(newResults);
     setTier(newTier);

@@ -10,6 +10,7 @@ import {
   todayIsoDate,
   updateDailyStreak,
 } from '@/lib/daily';
+import { markShown } from '@/lib/figureCooldown';
 import { MAX_GUESSES_PER_ROUND } from '@/lib/gameRules';
 import { matches } from '@/lib/matching';
 import { scoreGuess } from '@/lib/scoring';
@@ -71,6 +72,13 @@ export function DailyGame({ goTo }: DailyGameProps) {
     if (figures.length === 0) return null;
     return getDailyFigure(new Date(), figures);
   }, [figures]);
+
+  // Daily picks deterministically from the date so we don't read the
+  // cooldown queue — but we do append the daily figure so Practice /
+  // Challenge sessions later that day don't show it again.
+  useEffect(() => {
+    if (figure?.id) markShown(figure.id);
+  }, [figure?.id]);
 
   const [reveal, setReveal] = useState(10);
   const [guess, setGuess] = useState('');
