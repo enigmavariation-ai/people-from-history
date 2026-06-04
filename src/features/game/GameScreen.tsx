@@ -500,6 +500,10 @@ export function RoundChrome(props: RoundChromeProps) {
           trigger={figure?.id ?? 'win'}
           pointsLabel={pointsLabel}
           streak={streak}
+          figureName={figure?.name}
+          figureMeta={figure
+            ? [figure.era, figure.field, figure.region].filter(Boolean).join(' · ')
+            : undefined}
         />
       )}
       <MobileTree {...props} stageContent={stageContent} />
@@ -1283,9 +1287,13 @@ function FigureLearnMore({
   outcome: Outcome;
   compact?: boolean;
 }) {
+  // Auto-expand once the round resolves so the dossier is visible
+  // without the player having to discover the toggle. Re-collapses
+  // for the next round (when figure.id changes back into a 'playing'
+  // outcome). The button still works for manual collapse.
   const [expanded, setExpanded] = useState(false);
   useEffect(() => {
-    setExpanded(false);
+    setExpanded(outcome !== 'playing');
   }, [figure.id, outcome]);
 
   if (outcome === 'playing') return null;

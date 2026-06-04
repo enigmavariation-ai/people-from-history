@@ -27,6 +27,12 @@ type WinCelebrationProps = {
   // the points line in italic gold so the moment is connected to
   // the streak halo running on the score pill. Pass 0/1 to hide.
   streak?: number;
+  // Figure name + a short meta line ("Physics · 20th century") shown
+  // below the phrase so players learn *who* they got right in the
+  // moment, not just that they got it right. Helps discoverability
+  // of the dossier panel without an intrusive overlay.
+  figureName?: string;
+  figureMeta?: string;
 };
 
 // Center-screen overlay that flashes a "well done" phrase + points on
@@ -35,7 +41,13 @@ type WinCelebrationProps = {
 //
 // The phrase is picked once per mount (useMemo gated on `trigger`) so
 // it stays stable through the animation and rotates on the next win.
-export function WinCelebration({ trigger, pointsLabel, streak = 0 }: WinCelebrationProps) {
+export function WinCelebration({
+  trigger,
+  pointsLabel,
+  streak = 0,
+  figureName,
+  figureMeta,
+}: WinCelebrationProps) {
   const phrase = useMemo(() => {
     return PHRASES[Math.floor(Math.random() * PHRASES.length)] ?? PHRASES[0];
   }, [trigger]);
@@ -84,6 +96,26 @@ export function WinCelebration({ trigger, pointsLabel, streak = 0 }: WinCelebrat
         >
           {phrase}
         </div>
+        {figureName && (
+          <div
+            className="italic"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 22,
+              fontWeight: 500,
+              color: 'var(--color-amber)',
+              letterSpacing: '-0.014em',
+              textWrap: 'balance',
+            }}
+          >
+            {figureName}
+          </div>
+        )}
+        {figureMeta && (
+          <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-muted)">
+            {figureMeta}
+          </div>
+        )}
         {pointsLabel && (
           <div className="font-mono text-sm uppercase tracking-[0.18em] text-(--color-amber)">
             {pointsLabel}
