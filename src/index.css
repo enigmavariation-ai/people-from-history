@@ -308,6 +308,48 @@ input[type="range"].pfh-slider:disabled::-webkit-slider-thumb {
   animation: pfh-pulse-amber 1.2s ease forwards;
 }
 
+/* Streak milestone halo — fired when a win pushes the streak to 2+.
+   A gold ring expands and fades from the streak indicator's outer
+   edge, then settles. Opacity + ring scale only (no transform on
+   the element itself), per the no-movement rule. */
+@keyframes pfh-streak-halo {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(201, 155, 71, 0.65),
+      0 0 0 0 rgba(201, 155, 71, 0);
+  }
+  40% {
+    box-shadow:
+      0 0 0 8px rgba(201, 155, 71, 0.0),
+      0 0 0 3px rgba(201, 155, 71, 0.35);
+  }
+  100% {
+    box-shadow:
+      0 0 0 16px rgba(201, 155, 71, 0),
+      0 0 0 0 rgba(201, 155, 71, 0);
+  }
+}
+.pfh-streak-halo {
+  animation: pfh-streak-halo 1.4s ease forwards;
+}
+
+/* Streak digit color flash — cycles through gold to ink so the
+   number itself reads as the focal point of the celebration. */
+@keyframes pfh-streak-flash {
+  0% {
+    color: var(--color-gold);
+  }
+  30% {
+    color: var(--color-amber);
+  }
+  100% {
+    color: var(--color-ink);
+  }
+}
+.pfh-streak-flash {
+  animation: pfh-streak-flash 1.4s ease forwards;
+}
+
 /* Win halo — radial amber glow behind the portrait stage, fades in
    and back out over ~1.5s. Editorial — no movement, just opacity. */
 @keyframes pfh-halo {

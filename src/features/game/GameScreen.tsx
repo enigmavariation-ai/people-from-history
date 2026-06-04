@@ -371,6 +371,13 @@ export function RoundChrome(props: RoundChromeProps) {
     topInsert,
   } = props;
   const isPractice = mode === 'practice';
+  // The win pulse is set true briefly after every correct guess. A
+  // streak milestone is one of those wins where the streak just
+  // crossed into "noteworthy" territory (≥ 2). We use a key trick
+  // (streak as the key) downstream so the CSS animation re-runs on
+  // each milestone increment.
+  const streakMilestone = pulse && streak >= 2;
+  const streakKey = `streak-${streak}`;
 
   const stageContent = loading ? (
     <LoadingPlaceholder />
@@ -409,14 +416,23 @@ export function RoundChrome(props: RoundChromeProps) {
       )}
       <div className="absolute bottom-3 left-3 md:hidden">
         {isPractice ? (
-          <PillStat label={streakLabel} value={String(streak)} tone="amber" pulse={pulse} />
+          <PillStat
+            key={streakKey}
+            label={streakLabel}
+            value={String(streak)}
+            tone="amber"
+            pulse={pulse}
+            streakHalo={streakMilestone}
+          />
         ) : (
           <PillStat
+            key={streakKey}
             label={scoreLabel}
             value={String(score)}
             tone="amber"
             extra={`· ${streakLabel} ${streak}`}
             pulse={pulse}
+            streakHalo={streakMilestone}
           />
         )}
       </div>
@@ -480,7 +496,11 @@ export function RoundChrome(props: RoundChromeProps) {
         <Coachmarks steps={ROUND_COACHMARKS} storageKey="onboarding:rounds" />
       )}
       {pulse && (
-        <WinCelebration trigger={figure?.id ?? 'win'} pointsLabel={pointsLabel} />
+        <WinCelebration
+          trigger={figure?.id ?? 'win'}
+          pointsLabel={pointsLabel}
+          streak={streak}
+        />
       )}
       <MobileTree {...props} stageContent={stageContent} />
       <DesktopTree
@@ -897,7 +917,14 @@ function DesktopTree(
             <DossierHeader first>This round</DossierHeader>
             {isPractice ? (
               <div className="mb-6 grid grid-cols-2 gap-2.5">
-                <StatTile label={streakLabel} value={`${streak}`} pulse={pulse} featured />
+                <StatTile
+                  key={`p-streak-${streak}`}
+                  label={streakLabel}
+                  value={`${streak}`}
+                  pulse={pulse}
+                  streakHalo={pulse && streak >= 2}
+                  featured
+                />
                 <StatTile
                   label="Figures seen"
                   value={
@@ -911,7 +938,13 @@ function DesktopTree(
               <div className="mb-6 grid grid-cols-3 gap-2.5">
                 <StatTile label="Score" value={`${potential}`} featured />
                 <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
-                <StatTile label={streakLabel} value={`${streak}`} />
+                <StatTile
+                  key={`c-streak-${streak}`}
+                  label={streakLabel}
+                  value={`${streak}`}
+                  pulse={pulse && streak >= 2}
+                  streakHalo={pulse && streak >= 2}
+                />
               </div>
             )}
 
@@ -1035,12 +1068,18 @@ function PillStat({
   tone,
   extra,
   pulse,
+  streakHalo,
 }: {
   label: string;
   value: string;
   tone?: 'plain' | 'ink' | 'amber';
   extra?: string;
   pulse?: boolean;
+  // One-time celebration ring around the entire pill — fired when
+  // the player just crossed a streak milestone. See StatTile for
+  // notes; mobile pills include score + streak in one container,
+  // so the ring celebrates the moment as a whole.
+  streakHalo?: boolean;
 }) {
   const palette =
     tone === 'ink'
@@ -1058,7 +1097,8 @@ function PillStat({
     <span
       className={
         'inline-flex items-baseline gap-1.5 rounded-full border px-3 py-1.5 text-xs backdrop-blur-sm ' +
-        palette
+        palette +
+        (streakHalo ? ' pfh-streak-halo' : '')
       }
     >
       <span className={'font-mono text-[10px] uppercase tracking-[0.08em] ' + labelTone}>
@@ -1106,19 +1146,29 @@ function StatTile({
   value,
   featured,
   pulse,
+  streakHalo,
 }: {
   label: string;
   value: string;
   featured?: boolean;
   pulse?: boolean;
+  // Stronger one-time celebration — fires when the win pushed the
+  // player's streak across the milestone threshold (≥ 2). Pairs a
+  // gold expanding-ring on the tile with a color flash on the digit.
+  // Re-mounted by changing `key` upstream so the animation restarts.
+  streakHalo?: boolean;
 }) {
+  const valueClasses = ['leading-none', 'tabular-nums'];
+  if (streakHalo) valueClasses.push('pfh-streak-flash');
+  else if (pulse && !featured) valueClasses.push('pfh-pulse');
   return (
     <div
       className={
         'flex items-baseline justify-between gap-2 rounded-card border px-3 py-2 ' +
         (featured
           ? 'border-(--color-ink) bg-(--color-ink) text-white'
-          : 'border-(--color-hairline) bg-white')
+          : 'border-(--color-hairline) bg-white') +
+        (streakHalo ? ' pfh-streak-halo' : '')
       }
     >
       <span
@@ -1130,12 +1180,18 @@ function StatTile({
         {label}
       </span>
       <span
-        className={'leading-none tabular-nums ' + (pulse && !featured ? 'pfh-pulse' : '')}
+        className={valueClasses.join(' ')}
         style={{
           fontFamily: 'var(--font-display)',
           fontSize: 18,
           fontWeight: 600,
-          color: featured ? '#fff' : pulse ? 'var(--color-amber)' : 'var(--color-ink)',
+          color: featured
+            ? '#fff'
+            : streakHalo
+              ? 'var(--color-gold)'
+              : pulse
+                ? 'var(--color-amber)'
+                : 'var(--color-ink)',
         }}
       >
         {value}
