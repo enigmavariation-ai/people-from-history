@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react';
 import type { Figure } from '@/types/figure';
 
 // How many characters the user has to type before suggestions appear.
-// 2 strikes a balance between "too eager" (1 char → useless 5-item
-// list) and "too cautious" (3 chars → still typing).
-const MIN_CHARS = 2;
+// 3 keeps the dropdown out of the way for short stems and only fires
+// once the typist has committed to a name.
+const MIN_CHARS = 3;
 const SUGGESTION_LIMIT = 5;
 
 type Suggestion = {

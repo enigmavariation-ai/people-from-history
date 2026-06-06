@@ -1330,23 +1330,30 @@ function FigureLearnMore({
   outcome: Outcome;
   compact?: boolean;
 }) {
-  // Auto-expand once the round resolves so the dossier is visible
-  // without the player having to discover the toggle. Re-collapses
-  // for the next round (when figure.id changes back into a 'playing'
-  // outcome). The button still works for manual collapse.
+  // Desktop has the layout room to auto-expand once the round
+  // resolves. Mobile (compact) stays collapsed — expansion there
+  // pushes the slider / input around in a fixed-height column —
+  // and uses the one-time halo (see `panelKey`) on the collapsed
+  // header to draw the eye instead.
   const [expanded, setExpanded] = useState(false);
   useEffect(() => {
-    setExpanded(outcome !== 'playing');
-  }, [figure.id, outcome]);
+    setExpanded(compact ? false : outcome !== 'playing');
+  }, [figure.id, outcome, compact]);
 
   if (outcome === 'playing') return null;
   if (!figure.summary) return null;
 
+  // Re-mount the container whenever the round resolves so the
+  // pfh-streak-halo CSS animation re-runs and gold-rings the
+  // collapsed About header once. Only used in compact mode.
+  const panelKey = compact ? `about-${figure.id}-${outcome}` : undefined;
+
   return (
     <div
+      key={panelKey}
       className={
         'rounded-card border border-(--color-rule) bg-(--color-paper) ' +
-        (compact ? 'mb-3' : 'mt-4')
+        (compact ? 'mb-3 pfh-streak-halo' : 'mt-4')
       }
     >
       <button
