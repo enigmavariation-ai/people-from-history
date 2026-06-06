@@ -16,6 +16,7 @@ import {
   loadString,
   loadStringSet,
   saveNumber,
+  saveString,
   saveStringSet,
 } from '@/lib/storage';
 import { pushPracticeState } from '@/lib/syncState';
@@ -543,8 +544,13 @@ export function RoundChrome(props: RoundChromeProps) {
 
   return (
     <>
+      {/* Modal Coachmarks remain on desktop where the action area
+          has the room. Mobile uses the in-context tooltips inside
+          MobileTree (anchored to the slider and input directly). */}
       {showCoachmarks && (
-        <Coachmarks steps={ROUND_COACHMARKS} storageKey="onboarding:rounds" />
+        <div className="hidden md:contents">
+          <Coachmarks steps={ROUND_COACHMARKS} storageKey="onboarding:rounds" />
+        </div>
       )}
       {pulse && (
         <WinCelebration
@@ -608,6 +614,54 @@ function MobileTree(
   const isPractice = mode === 'practice';
   const guessesLeft = Math.max(0, guessesMax - guessesUsed);
 
+  // In-context onboarding for first-time mobile players. Two
+  // sequential tooltips:
+  //   1. "slider"  — anchored above the reveal slider, with a
+  //                  pulsing thumb. Dismisses on the first drag.
+  //   2. "input"   — anchored above the guess input. Dismisses on
+  //                  the first character typed, the first
+  //                  suggestion tap, or the Enter/Guess press.
+  // Either step's × button skips the whole flow and persists
+  // 'done' to localStorage. Storage key bumps replace the modal
+  // Coachmarks for mobile (kept for desktop via md:block).
+  const [onbStep, setOnbStep] = useState<'init' | 'slider' | 'input' | 'done'>(
+    'init',
+  );
+  useEffect(() => {
+    // Either flag counts as "user has seen onboarding once". Stops
+    // a desktop-first user from seeing the mobile tooltips later
+    // when they pick the phone up.
+    const seenMobile = loadString('onboarding:mobile-v1');
+    const seenDesktop = loadString('onboarding:rounds');
+    setOnbStep(seenMobile || seenDesktop ? 'done' : 'slider');
+  }, []);
+  const completeOnboarding = () => {
+    setOnbStep('done');
+    saveString('onboarding:mobile-v1', '1');
+    // Also mark the desktop modal flow as seen so a user who
+    // completes mobile onboarding doesn't then face the desktop
+    // modal if they revisit on a wider viewport. Symmetric the
+    // other way: dismissing the desktop modal won't re-show the
+    // mobile tooltips because we check the mobile key first.
+    saveString('onboarding:rounds', '1');
+  };
+  const handleReveal = (v: number) => {
+    if (onbStep === 'slider' && v > reveal) setOnbStep('input');
+    onReveal(v);
+  };
+  const handleGuess = (v: string) => {
+    if (onbStep === 'input' && v.length > 0) completeOnboarding();
+    onGuess(v);
+  };
+  const handleSubmit = (e: React.FormEvent) => {
+    if (onbStep !== 'done' && onbStep !== 'init') completeOnboarding();
+    onSubmit(e);
+  };
+  const handleSelectSuggestion = (name: string) => {
+    if (onbStep !== 'done' && onbStep !== 'init') completeOnboarding();
+    onSelectSuggestion(name);
+  };
+
   return (
     <div className="flex h-[calc(100svh-var(--app-bar-h))] flex-col bg-(--color-bg) md:hidden">
       {/* Top bar */}
@@ -643,17 +697,20 @@ function MobileTree(
       </div>
 
       {/* Slider (compact) */}
-      <div className="mt-3 flex flex-shrink-0 items-center gap-3 px-4">
+      <div className="relative mt-3 flex flex-shrink-0 items-center gap-3 px-4">
         <input
           type="range"
-          className="pfh-slider flex-1"
+          className={
+            'pfh-slider flex-1' +
+            (onbStep === 'slider' ? ' pfh-slider-pulse' : '')
+          }
           min={10}
           max={100}
           value={visualReveal}
           onChange={(e) => {
             const v = parseInt(e.target.value, 10);
             if (v > reveal) {
-              onReveal(v);
+              handleReveal(v);
             } else {
               e.currentTarget.value = String(reveal);
             }
@@ -673,6 +730,12 @@ function MobileTree(
         >
           {visualReveal}%
         </span>
+        {onbStep === 'slider' && (
+          <MobileCoachTooltip
+            text="Drag to reveal — every % costs a point."
+            onDismiss={completeOnboarding}
+          />
+        )}
       </div>
 
       {/* Hint chips */}
@@ -700,17 +763,25 @@ function MobileTree(
 
         <FigureLearnMore figure={figure} outcome={outcome} compact />
 
-        <GuessInput
-          value={guess}
-          onChange={onGuess}
-          onSubmit={onSubmit}
-          onSelectSuggestion={onSelectSuggestion}
-          disabled={outcome !== 'playing' || !figure}
-          figurePool={figurePool}
-          suggestionsPosition="above"
-          inputClassName="min-h-12 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) placeholder:text-(--color-muted) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted)"
-          buttonClassName="inline-flex min-h-12 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
-        />
+        <div className="relative">
+          <GuessInput
+            value={guess}
+            onChange={handleGuess}
+            onSubmit={handleSubmit}
+            onSelectSuggestion={handleSelectSuggestion}
+            disabled={outcome !== 'playing' || !figure}
+            figurePool={figurePool}
+            suggestionsPosition="above"
+            inputClassName="min-h-12 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) placeholder:text-(--color-muted) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted)"
+            buttonClassName="inline-flex min-h-12 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          {onbStep === 'input' && (
+            <MobileCoachTooltip
+              text="Type a name — or pick from suggestions."
+              onDismiss={completeOnboarding}
+            />
+          )}
+        </div>
         {outcome === 'playing' && (
           <GuessesLeftPill used={guessesUsed} max={guessesMax} left={guessesLeft} />
         )}
@@ -1133,6 +1204,69 @@ function GuessesLeftPill({
       >
         {labelText}
       </span>
+    </div>
+  );
+}
+
+// In-context onboarding tooltip for mobile. Positions itself
+// absolutely above its relative parent (the slider row or the
+// guess-input wrapper) with a small downward-pointing diamond so
+// the eye traces from the message to the actual control. Dismissible
+// via a small × in the corner; the host also auto-dismisses on the
+// first interaction with the referenced control.
+function MobileCoachTooltip({
+  text,
+  onDismiss,
+}: {
+  text: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center px-4"
+      style={{ bottom: 'calc(100% + 10px)' }}
+    >
+      <div className="pointer-events-auto relative max-w-[320px] rounded-card border border-(--color-amber) bg-(--color-paper) px-3.5 py-2 pr-7 shadow-[0_6px_22px_-8px_rgba(20,20,25,0.22)]">
+        <p
+          className="leading-snug"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 14,
+            fontWeight: 500,
+            color: 'var(--color-ink)',
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {text}
+        </p>
+        <button
+          onClick={onDismiss}
+          aria-label="Dismiss tip"
+          className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded text-(--color-muted) hover:bg-black/[0.04] hover:text-(--color-body)"
+        >
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          >
+            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+          </svg>
+        </button>
+        {/* Downward diamond pointer — rotated square with two visible
+            edges matching the card's amber border. */}
+        <div
+          aria-hidden
+          className="absolute h-2.5 w-2.5 rotate-45 border-b border-r border-(--color-amber) bg-(--color-paper)"
+          style={{ left: '50%', bottom: -6, marginLeft: -5 }}
+        />
+      </div>
     </div>
   );
 }

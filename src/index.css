@@ -157,6 +157,33 @@ input[type="range"].pfh-slider:disabled::-webkit-slider-thumb {
   background: var(--color-muted);
 }
 
+/* First-time-player nudge — pulses the slider thumb until the
+   first drag. Gold ring expanding outward + the existing ink hairline
+   underneath, opacity-only animation per the no-movement rule. */
+@keyframes pfh-thumb-pulse {
+  0% {
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.15),
+      0 0 0 0 rgba(201, 155, 71, 0.55);
+  }
+  70% {
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.15),
+      0 0 0 14px rgba(201, 155, 71, 0);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.15),
+      0 0 0 0 rgba(201, 155, 71, 0);
+  }
+}
+input[type="range"].pfh-slider.pfh-slider-pulse::-webkit-slider-thumb {
+  animation: pfh-thumb-pulse 1.6s ease-out infinite;
+}
+input[type="range"].pfh-slider.pfh-slider-pulse::-moz-range-thumb {
+  animation: pfh-thumb-pulse 1.6s ease-out infinite;
+}
+
 /* Touch devices: enlarge the thumb and bump the hit area to roughly
    the Apple/Material 44px touch-target. Track stays 6px — visual
    weight unchanged; the thumb just becomes substantially easier to
