@@ -7,17 +7,19 @@ type CookieNoticeProps = {
   goTo: (s: Screen) => void;
 };
 
-// Bottom-pinned notice acknowledging the storage the app uses. Because
-// People from History only uses strictly-necessary storage (auth
-// tokens, local game state, captcha cookies for bot detection),
-// consent under the ePrivacy Directive / § 25 (2) TTDSG is not
-// technically required. This banner is informational — users can
-// acknowledge it and we don't ask them to opt in or out of any
-// optional category, because there is none.
+// Bottom-pinned notice acknowledging the storage + telemetry the
+// app uses. Storage is strictly-necessary (auth tokens, local game
+// state, captcha bot-detection); telemetry is Vercel Web Analytics,
+// which is cookieless first-party aggregate page-view counting with
+// no user identifiers and no cross-site tracking. Together this
+// stays inside the consent carve-out under § 165 (3) TKG (Austria)
+// / Art. 5 (3) ePrivacy Directive, so the banner remains
+// informational rather than requiring opt-in toggles.
 //
-// If marketing/analytics tracking is added later, this component
-// should be upgraded to a real consent dialog with per-category
-// toggles before any third-party tracker fires.
+// If marketing analytics, advertising trackers, or any third-party
+// profiling are added later, this component should be upgraded to
+// a real consent dialog with per-category toggles before any new
+// tracker fires.
 const STORAGE_KEY = 'cookie:acknowledged';
 
 export function CookieNotice({ goTo }: CookieNoticeProps) {
@@ -44,9 +46,10 @@ export function CookieNotice({ goTo }: CookieNoticeProps) {
     >
       <div className="flex w-full max-w-[720px] flex-col gap-3 rounded-card border border-(--color-rule) bg-(--color-bg) p-4 shadow-[0_12px_32px_-8px_rgba(20,20,25,0.25)] md:flex-row md:items-center md:gap-4 md:p-4">
         <div className="flex-1 text-xs leading-relaxed text-(--color-body) md:text-sm">
-          We use cookies and local storage to keep you signed in, remember
-          your daily streak, and protect against spam. We don't track you for
-          ads or analytics.{' '}
+          Cookies and local storage keep you signed in, remember your daily
+          streak, and block bots. We also count anonymous page views
+          (cookieless, no cross-site tracking). No advertising, no
+          profiling.{' '}
           <button
             onClick={() => {
               dismiss();
