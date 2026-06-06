@@ -104,15 +104,26 @@ async function buildOgPng(napoleonRaw) {
     .extract({ left: focalLeft, top: focalTop, width: focalW, height: focalH })
     .toBuffer();
 
-  // SVG overlay: white focal-box border, plate caption, and the
-  // entire right-hand text column. Composited on top of the dimmed
-  // image so all text is crisp vector.
+  // Logo (bicorne silhouette) — composited at the top of the cream
+  // column, resized small so the tagline carries the visual weight.
+  const LOGO_SIZE = 140;
+  const LOGO_LEFT = 660 + Math.round((W - 660 - LOGO_SIZE) / 2);
+  const LOGO_TOP = 130;
+  const logo = await sharp(LOGO_PATH)
+    .resize(LOGO_SIZE, LOGO_SIZE, {
+      fit: 'contain',
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .toBuffer();
+
+  // SVG overlay: white focal-box border + the single tagline on the
+  // right. Logo is composited separately as a PNG (cleaner alpha
+  // than embedding via SVG <image>).
   const overlay = Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <style>
       .serif { font-family: 'Newsreader', 'Times New Roman', Georgia, serif; }
-      .mono  { font-family: 'SF Mono', Menlo, monospace; }
     </style>
   </defs>
 
@@ -123,65 +134,26 @@ async function buildOgPng(napoleonRaw) {
         fill="none"
         stroke="rgba(255,255,255,0.95)" stroke-width="2.5"/>
 
-  <!-- Plate caption bottom-left of the painting column. -->
-  <text x="14" y="612"
-        class="mono"
-        fill="rgba(255,255,255,0.78)"
-        font-size="13"
-        letter-spacing="1.8"
-        font-weight="500">NAPOLEON · J.-L. DAVID, 1812</text>
-
-  <!-- Right-hand text column (cream paper, x = 660 → 1170). -->
-
-  <!-- Editorial eyebrow. -->
-  <text x="660" y="150"
-        class="mono"
-        fill="#B5822A"
-        font-size="22"
-        letter-spacing="5"
-        font-weight="500">PEOPLE FROM HISTORY</text>
-
-  <!-- Headline — two lines so the italicised noun gets its own visual
-       weight without breaking awkwardly. -->
-  <text x="660" y="278"
+  <!-- Tagline — centred under the logo. Two lines so the
+       italicised noun keeps its own visual weight without breaking
+       awkwardly across line-wraps. -->
+  <text x="915" y="380" text-anchor="middle"
         class="serif"
         fill="#161616"
-        font-size="58"
+        font-size="60"
         font-weight="500"
-        letter-spacing="-1.4">Like Geoguessr,</text>
-  <text x="660" y="346"
+        letter-spacing="-1.5">Like Geoguessr,</text>
+  <text x="915" y="450" text-anchor="middle"
         class="serif"
         fill="#161616"
-        font-size="58"
+        font-size="60"
         font-weight="500"
-        letter-spacing="-1.4">but for <tspan font-style="italic" fill="#B5822A">history</tspan>.</text>
-
-  <!-- Sub-line. -->
-  <text x="660" y="410"
-        class="serif"
-        fill="#73726C"
-        font-size="24"
-        font-weight="400">650 figures. Tighter crop, higher score.</text>
-
-  <!-- Ornament: rule · amber dot · rule. -->
-  <line x1="660" y1="495" x2="755" y2="495"
-        stroke="rgba(22,22,22,0.18)" stroke-width="1"/>
-  <circle cx="780" cy="495" r="5" fill="#B5822A"/>
-  <line x1="805" y1="495" x2="900" y2="495"
-        stroke="rgba(22,22,22,0.18)" stroke-width="1"/>
-
-  <!-- Footer wordmark. -->
-  <text x="660" y="585"
-        class="mono"
-        fill="#161616"
-        font-size="20"
-        font-weight="500"
-        letter-spacing="3">peoplefromhistory.com</text>
+        letter-spacing="-1.5">but for <tspan font-style="italic" fill="#B5822A">history</tspan>.</text>
 </svg>`);
 
   // Stack: cream background → dimmed painting on the left half →
-  // focal rect at full opacity over the dimmed area → SVG overlay
-  // with border + text on top.
+  // focal rect at full opacity over the dimmed area → logo bitmap
+  // → SVG overlay with border + text on top.
   return sharp({
     create: {
       width: W,
@@ -193,6 +165,7 @@ async function buildOgPng(napoleonRaw) {
     .composite([
       { input: dimmed, top: 0, left: 0 },
       { input: focalRect, top: focalTop, left: focalLeft },
+      { input: logo, top: LOGO_TOP, left: LOGO_LEFT },
       { input: overlay, top: 0, left: 0 },
     ])
     .png({ compressionLevel: 9 })
