@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Disallow the admin curation tool — only useful for the operator
+# and we don't want it surfaced in search results.
+Disallow: /audit
+
+Sitemap: https://peoplefromhistory.com/sitemap.xml
