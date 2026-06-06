@@ -172,8 +172,11 @@ export function PrivacyScreen({ goTo }: PrivacyScreenProps) {
               <strong className="font-medium text-(--color-ink)">
                 Vercel
               </strong>{' '}
-              — web hosting and content delivery. Vercel's edge network
-              may handle requests outside the EU/EEA. See{' '}
+              — web hosting, content delivery, and Web Analytics. Web
+              Analytics records aggregate, cookieless page-view and
+              referrer counts (no user identifiers, no behavioural
+              profiling) for our use only. Vercel's edge network may
+              handle requests outside the EU/EEA. See{' '}
               <a
                 className="text-(--color-amber) underline-offset-2 hover:underline"
                 href="https://vercel.com/legal/privacy-policy"
@@ -257,13 +260,25 @@ export function PrivacyScreen({ goTo }: PrivacyScreenProps) {
               you sign in or submit a leaderboard run, purely for bot
               detection.
             </li>
+            <li>
+              <strong className="font-medium text-(--color-ink)">
+                Vercel Web Analytics
+              </strong>{' '}
+              records aggregate page-view counts and referrer information
+              first-party (same origin as the site). It does{' '}
+              <strong className="font-medium text-(--color-ink)">not</strong>{' '}
+              set cookies, does not assign user identifiers, and does not
+              follow you across other websites; it only counts how many
+              times each page was loaded.
+            </li>
           </ul>
           <p className="mt-3">
             We do{' '}
             <strong className="font-medium text-(--color-ink)">not</strong>{' '}
-            use analytics cookies, advertising cookies, tracking pixels,
-            social-media plug-ins, or any third-party profiling. Because
-            of that, no cookie-consent banner is required by law — we
+            use third-party analytics cookies, advertising cookies,
+            tracking pixels, social-media plug-ins, or any cross-site
+            profiling. Because the storage we do use is strictly
+            necessary, no cookie-consent banner is required by law — we
             still surface a one-time informational notice so you know
             what is stored.
           </p>

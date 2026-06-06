@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 import { CookieNotice } from '@/components/CookieNotice';
 import { DesktopSidebar } from '@/components/DesktopSidebar';
@@ -113,6 +114,11 @@ function App() {
           device on first visit; storage-only, no consent toggles since
           we don't use marketing/analytics trackers. */}
       <CookieNotice goTo={goTo} />
+      {/* Vercel Web Analytics. First-party, cookieless, only pageview
+          + referrer counts (no personal data, no behavioural profiling)
+          so it stays inside the "strictly necessary" carve-out we've
+          described in the privacy policy. */}
+      <Analytics />
     </div>
   );
 }
