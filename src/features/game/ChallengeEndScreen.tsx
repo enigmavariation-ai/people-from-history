@@ -353,7 +353,7 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
                   onExpire={() => setCaptchaToken(null)}
                   onError={() => setCaptchaToken(null)}
                   options={{
-                    appearance: 'always',
+                    appearance: 'interaction-only',
                     refreshExpired: 'auto',
                     theme: 'light',
                     size: 'compact',

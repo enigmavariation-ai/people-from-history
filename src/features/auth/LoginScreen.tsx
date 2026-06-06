@@ -272,7 +272,7 @@ export function LoginScreen({ goTo }: LoginScreenProps) {
               onExpire={() => setCaptchaToken(null)}
               onError={() => setCaptchaToken(null)}
               options={{
-                appearance: 'always',
+                appearance: 'interaction-only',
                 refreshExpired: 'auto',
                 theme: 'light',
                 size: 'compact',
