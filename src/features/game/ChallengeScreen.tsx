@@ -113,10 +113,13 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [figures]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Shared submission path used by both the form (typed Enter / Guess
+  // button) and the typeahead (tap a suggestion). Reads the raw value
+  // explicitly so a suggestion tap doesn't race against React's
+  // pending setState for `guess`.
+  const submitGuess = (raw: string) => {
     if (!figure || outcome !== 'playing') return;
-    const trimmed = guess.trim();
+    const trimmed = raw.trim();
     if (!trimmed) return;
     if (matches(trimmed, [figure.name, ...figure.aliases])) {
       const earned = scoreChallengeRound(reveal, usedHints, tier);
@@ -130,8 +133,6 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
       return;
     }
 
-    // Wrong guess — count it. When the count hits the cap the round
-    // auto-ends with the same outcome as a give-up.
     const next = guessesUsed + 1;
     setGuessesUsed(next);
     if (next >= MAX_GUESSES_PER_ROUND) {
@@ -148,6 +149,16 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
         text: 'Not quite — try revealing more, or use a hint.',
       });
     }
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitGuess(guess);
+  };
+
+  const selectSuggestion = (name: string) => {
+    setGuess(name);
+    submitGuess(name);
   };
 
   const useHint = (key: HintType) => {
@@ -272,6 +283,8 @@ export function ChallengeScreen({ goTo }: ChallengeScreenProps) {
       guess={guess}
       onGuess={setGuess}
       onSubmit={submit}
+      onSelectSuggestion={selectSuggestion}
+      figurePool={figures}
       feedback={feedback}
       usedHints={usedHints}
       onUseHint={useHint}

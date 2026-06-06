@@ -96,10 +96,9 @@ export function DailyGame({ goTo }: DailyGameProps) {
   const currentScore = outcome === 'won' ? scoreGuess(reveal, usedHints) : 0;
   const figureForChrome = figure ?? EMPTY_FIGURE;
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitGuess = (raw: string) => {
     if (!figure || outcome !== 'playing') return;
-    const trimmed = guess.trim();
+    const trimmed = raw.trim();
     if (!trimmed) return;
     if (matches(trimmed, [figure.name, ...figure.aliases])) {
       setOutcome('won');
@@ -128,6 +127,16 @@ export function DailyGame({ goTo }: DailyGameProps) {
         text: 'Not quite — try revealing more, or use a hint.',
       });
     }
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitGuess(guess);
+  };
+
+  const selectSuggestion = (name: string) => {
+    setGuess(name);
+    submitGuess(name);
   };
 
   const useHint = (key: HintType) => {
@@ -209,6 +218,8 @@ export function DailyGame({ goTo }: DailyGameProps) {
       guess={guess}
       onGuess={setGuess}
       onSubmit={submit}
+      onSelectSuggestion={selectSuggestion}
+      figurePool={figures}
       feedback={feedback}
       usedHints={usedHints}
       onUseHint={useHint}

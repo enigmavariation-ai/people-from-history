@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AppMenu } from '@/components/AppMenu';
 import { Coachmarks } from '@/components/Coachmarks';
+import { GuessInput } from '@/components/GuessInput';
 import { WinCelebration } from '@/components/WinCelebration';
 import { sampleFigure } from '@/data/sampleFigure';
 import { CropStage } from '@/features/game/CropStage';
@@ -173,10 +174,9 @@ export function GameScreen({ goTo }: GameScreenProps) {
     });
   };
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitGuess = (raw: string) => {
     if (!figure || outcome !== 'playing') return;
-    const trimmed = guess.trim();
+    const trimmed = raw.trim();
     if (!trimmed) return;
     if (matches(trimmed, [figure.name, ...figure.aliases])) {
       const nextStreak = streak + 1;
@@ -194,9 +194,6 @@ export function GameScreen({ goTo }: GameScreenProps) {
       return;
     }
 
-    // Wrong guess — count it and reset the streak. When the count
-    // hits the cap the round auto-ends as a loss (same path as
-    // give-up: reveals the answer, marks seen, persists state).
     const next = guessesUsed + 1;
     setGuessesUsed(next);
     setStreak(0);
@@ -218,6 +215,16 @@ export function GameScreen({ goTo }: GameScreenProps) {
       });
       pushPracticeState();
     }
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitGuess(guess);
+  };
+
+  const selectSuggestion = (name: string) => {
+    setGuess(name);
+    submitGuess(name);
   };
 
   const useHint = (key: HintType) => {
@@ -281,6 +288,8 @@ export function GameScreen({ goTo }: GameScreenProps) {
       guess={guess}
       onGuess={setGuess}
       onSubmit={submit}
+      onSelectSuggestion={selectSuggestion}
+      figurePool={figures}
       feedback={feedback}
       usedHints={usedHints}
       onUseHint={useHint}
@@ -326,6 +335,15 @@ export type RoundChromeProps = {
   guess: string;
   onGuess: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
+  // Called when the user taps a typeahead suggestion. Each screen
+  // stages the new guess and runs the matcher against it directly
+  // (vs reading from state, which is stale within this tick).
+  onSelectSuggestion: (name: string) => void;
+  // The figure pool drives the typeahead suggestions. We pass the
+  // full set rather than filtering by tier/mode so users never see
+  // "oh I'm missing a suggestion" feedback that leaks the round's
+  // difficulty range.
+  figurePool: Figure[];
   feedback: Feedback;
   usedHints: HintType[];
   onUseHint: (key: HintType) => void;
@@ -580,6 +598,8 @@ function MobileTree(
     footMeta,
     guessesUsed,
     guessesMax,
+    onSelectSuggestion,
+    figurePool,
     topInsert,
     stageContent,
   } = props;
@@ -678,23 +698,17 @@ function MobileTree(
 
         <FigureLearnMore figure={figure} outcome={outcome} compact />
 
-        <form onSubmit={onSubmit} className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Who is this person?"
-            value={guess}
-            onChange={(e) => onGuess(e.target.value)}
-            disabled={outcome !== 'playing' || !figure}
-            className="min-h-12 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) placeholder:text-(--color-muted) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted)"
-          />
-          <button
-            type="submit"
-            disabled={outcome !== 'playing' || !figure}
-            className="inline-flex min-h-12 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Guess
-          </button>
-        </form>
+        <GuessInput
+          value={guess}
+          onChange={onGuess}
+          onSubmit={onSubmit}
+          onSelectSuggestion={onSelectSuggestion}
+          disabled={outcome !== 'playing' || !figure}
+          figurePool={figurePool}
+          suggestionsPosition="above"
+          inputClassName="min-h-12 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) placeholder:text-(--color-muted) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted)"
+          buttonClassName="inline-flex min-h-12 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-5 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] disabled:cursor-not-allowed disabled:opacity-50"
+        />
         {outcome === 'playing' && (
           <GuessesLeftPill used={guessesUsed} max={guessesMax} left={guessesLeft} />
         )}
@@ -826,6 +840,8 @@ function DesktopTree(
     footMeta,
     guessesUsed,
     guessesMax,
+    onSelectSuggestion,
+    figurePool,
     scoreLabel,
     streakLabel,
     nextLabel,
@@ -984,23 +1000,19 @@ function DesktopTree(
             )}
 
             <DossierHeader>Your guess</DossierHeader>
-            <form onSubmit={onSubmit} className="mb-2 flex gap-2">
-              <input
-                type="text"
-                placeholder="Who is this person?"
+            <div className="mb-2">
+              <GuessInput
                 value={guess}
-                onChange={(e) => onGuess(e.target.value)}
+                onChange={onGuess}
+                onSubmit={onSubmit}
+                onSelectSuggestion={onSelectSuggestion}
                 disabled={outcome !== 'playing' || !figure}
-                className="min-h-12 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) transition-colors duration-150 placeholder:text-(--color-muted) hover:border-(--color-hairline-strong) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted) md:min-h-11"
+                figurePool={figurePool}
+                suggestionsPosition="below"
+                inputClassName="min-h-12 w-full rounded-button border border-(--color-hairline) bg-white px-4 py-3 text-base text-(--color-ink) transition-colors duration-150 placeholder:text-(--color-muted) hover:border-(--color-hairline-strong) focus:border-(--color-amber) focus:outline-none disabled:cursor-not-allowed disabled:bg-[#F5F4F2] disabled:text-(--color-muted) md:min-h-11"
+                buttonClassName="inline-flex min-h-12 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50 md:min-h-11"
               />
-              <button
-                type="submit"
-                disabled={outcome !== 'playing' || !figure}
-                className="inline-flex min-h-12 flex-shrink-0 items-center justify-center rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover) disabled:cursor-not-allowed disabled:opacity-50 md:min-h-11"
-              >
-                Guess
-              </button>
-            </form>
+            </div>
             {outcome === 'playing' && (
               <div className="mb-4">
                 <GuessesLeftPill
