@@ -614,19 +614,22 @@ function MobileTree(
   const isPractice = mode === 'practice';
   const guessesLeft = Math.max(0, guessesMax - guessesUsed);
 
-  // In-context onboarding for first-time mobile players. Two
-  // sequential tooltips:
-  //   1. "slider"  — anchored above the reveal slider, with a
-  //                  pulsing thumb. Dismisses on the first drag.
-  //   2. "input"   — anchored above the guess input. Dismisses on
-  //                  the first character typed, the first
-  //                  suggestion tap, or the Enter/Guess press.
-  // Either step's × button skips the whole flow and persists
-  // 'done' to localStorage. Storage key bumps replace the modal
-  // Coachmarks for mobile (kept for desktop via md:block).
-  const [onbStep, setOnbStep] = useState<'init' | 'slider' | 'input' | 'done'>(
-    'init',
-  );
+  // In-context onboarding for first-time mobile players. Three
+  // sequential tooltips, each anchored to the relevant control
+  // and auto-advanced by the matching user action:
+  //   1. "slider" — above the reveal slider, with a pulsing thumb.
+  //                 First drag advances.
+  //   2. "hints"  — above the hint chip row. First hint tap
+  //                 advances; typing into the input skips ahead.
+  //   3. "input"  — above the guess input. First character typed,
+  //                 first suggestion tap, or first Enter/Guess
+  //                 press finishes.
+  // × on any tooltip skips the whole flow. Storage marks both the
+  // mobile-v1 key and the legacy 'onboarding:rounds' key as seen,
+  // so a later desktop visit doesn't re-prompt with the modal.
+  const [onbStep, setOnbStep] = useState<
+    'init' | 'slider' | 'hints' | 'input' | 'done'
+  >('init');
   useEffect(() => {
     // Either flag counts as "user has seen onboarding once". Stops
     // a desktop-first user from seeing the mobile tooltips later
@@ -646,11 +649,22 @@ function MobileTree(
     saveString('onboarding:rounds', '1');
   };
   const handleReveal = (v: number) => {
-    if (onbStep === 'slider' && v > reveal) setOnbStep('input');
+    if (onbStep === 'slider' && v > reveal) setOnbStep('hints');
     onReveal(v);
   };
+  const handleUseHint = (key: HintType) => {
+    if (onbStep === 'hints') setOnbStep('input');
+    onUseHint(key);
+  };
   const handleGuess = (v: string) => {
-    if (onbStep === 'input' && v.length > 0) completeOnboarding();
+    // Typing skips any remaining tooltips — the player has clearly
+    // figured out the input on their own.
+    if (
+      (onbStep === 'hints' || onbStep === 'input') &&
+      v.length > 0
+    ) {
+      completeOnboarding();
+    }
     onGuess(v);
   };
   const handleSubmit = (e: React.FormEvent) => {
@@ -739,7 +753,7 @@ function MobileTree(
       </div>
 
       {/* Hint chips */}
-      <div className="flex flex-shrink-0 flex-wrap gap-1.5 px-4 py-2.5">
+      <div className="relative flex flex-shrink-0 flex-wrap gap-1.5 px-4 py-2.5">
         {HINTS.map((h) => (
           <MobileHintChip
             key={h.key}
@@ -748,9 +762,15 @@ function MobileTree(
             used={usedHints.includes(h.key)}
             disabled={outcome !== 'playing' || !figure}
             showCost={!isPractice}
-            onUse={() => onUseHint(h.key)}
+            onUse={() => handleUseHint(h.key)}
           />
         ))}
+        {onbStep === 'hints' && (
+          <MobileCoachTooltip
+            text="Stuck? Tap a hint — Era, Field, Region, or Initial."
+            onDismiss={completeOnboarding}
+          />
+        )}
       </div>
 
       {/* Action area — stacks right under the hints, no bottom anchoring.
