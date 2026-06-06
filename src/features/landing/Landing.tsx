@@ -153,17 +153,17 @@ export function Landing({ goTo }: LandingProps) {
               {/* Mobile: one big primary CTA. Desktop: pair of equal buttons. */}
               <button
                 ref={heroCtaRef}
-                onClick={() => goTo('daily-game')}
+                onClick={() => goTo('challenge')}
                 className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-5 py-3.5 text-base font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49] md:hidden"
               >
-                Play today's puzzle →
+                Play now →
               </button>
               <div className="hidden flex-wrap gap-3 md:flex">
                 <button
-                  onClick={() => goTo('daily-game')}
+                  onClick={() => goTo('challenge')}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-6 py-3.5 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-[#1F2D49]"
                 >
-                  Play today's puzzle →
+                  Play now →
                 </button>
                 <button
                   onClick={scrollToDemo}
@@ -493,8 +493,8 @@ export function Landing({ goTo }: LandingProps) {
 
       {/* Mobile-only sticky CTA. Appears after the hero's Play button
           scrolls out of view; the visitor is always one tap away from
-          starting today's puzzle. Safe-area aware so it doesn't get
-          covered by the iOS home indicator. */}
+          starting the 10-figure challenge. Safe-area aware so it
+          doesn't get covered by the iOS home indicator. */}
       <div
         className={
           'pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-3 pt-2 transition-transform duration-200 md:hidden ' +
@@ -508,10 +508,10 @@ export function Landing({ goTo }: LandingProps) {
         aria-hidden={heroCtaVisible}
       >
         <button
-          onClick={() => goTo('daily-game')}
+          onClick={() => goTo('challenge')}
           className="pointer-events-auto inline-flex min-h-12 w-full max-w-[420px] items-center justify-center gap-2 rounded-button border border-(--color-navy) bg-(--color-navy) px-5 py-3 text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(20,20,25,0.35)] hover:bg-[#1F2D49]"
         >
-          Play today's puzzle →
+          Play now →
         </button>
       </div>
     </div>
