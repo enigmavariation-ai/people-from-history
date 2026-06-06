@@ -333,6 +333,17 @@ input[type="range"].pfh-slider:disabled::-webkit-slider-thumb {
   animation: pfh-streak-halo 1.4s ease forwards;
 }
 
+/* Persistent halo — sits on the streak pill the whole time the
+   player is on a streak (≥ 2). Subtle gold ring + soft outer glow.
+   Pairs with `pfh-streak-halo` (one-time expand) which fires once
+   per increment on top of this. Removed when the streak resets so
+   the indicator stops feeling earned. */
+.pfh-streak-active {
+  box-shadow:
+    0 0 0 1.5px var(--color-gold),
+    0 0 14px rgba(201, 155, 71, 0.35);
+}
+
 /* Streak digit color flash — cycles through gold to ink so the
    number itself reads as the focal point of the celebration. */
 @keyframes pfh-streak-flash {

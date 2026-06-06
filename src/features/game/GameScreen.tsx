@@ -472,6 +472,7 @@ export function RoundChrome(props: RoundChromeProps) {
             tone="amber"
             pulse={pulse}
             streakHalo={streakMilestone}
+            streakActive={streak >= 2}
           />
         ) : (
           <PillStat
@@ -482,6 +483,7 @@ export function RoundChrome(props: RoundChromeProps) {
             extra={`· ${streakLabel} ${streak}`}
             pulse={pulse}
             streakHalo={streakMilestone}
+            streakActive={streak >= 2}
           />
         )}
       </div>
@@ -974,6 +976,7 @@ function DesktopTree(
                   value={`${streak}`}
                   pulse={pulse}
                   streakHalo={pulse && streak >= 2}
+                  streakActive={streak >= 2}
                   featured
                 />
                 <StatTile
@@ -995,6 +998,7 @@ function DesktopTree(
                   value={`${streak}`}
                   pulse={pulse && streak >= 2}
                   streakHalo={pulse && streak >= 2}
+                  streakActive={streak >= 2}
                 />
               </div>
             )}
@@ -1075,11 +1079,10 @@ function DesktopTree(
 
 // ====== Subcomponents ======================================================
 
-// Small caption next to / under the guess form telling the player
-// how many tries remain this round. Amber when at full / near full,
-// shifts to a warning tone in the last 2 tries.
+// Duolingo-style row of dots under the guess form. Each filled dot
+// is a guess remaining; dots empty out as wrong guesses pile up.
+// Cleaner than the previous "N of M used · K left" sentence.
 function GuessesLeftPill({
-  used,
   max,
   left,
 }: {
@@ -1087,8 +1090,14 @@ function GuessesLeftPill({
   max: number;
   left: number;
 }) {
-  const lowWarn = left <= 2 && left > 0;
+  const lowWarn = left > 0 && left <= 2;
   const exhausted = left === 0;
+  const dotActive = exhausted
+    ? 'var(--color-error)'
+    : lowWarn
+      ? 'var(--color-amber)'
+      : 'var(--color-amber)';
+  const labelText = exhausted ? 'Out' : `${left} left`;
   const labelTone = exhausted
     ? 'text-(--color-error)'
     : lowWarn
@@ -1096,15 +1105,34 @@ function GuessesLeftPill({
       : 'text-(--color-muted)';
   return (
     <div
-      className={
-        'font-mono text-[10px] uppercase tracking-[0.12em] ' + labelTone
-      }
+      className="flex items-center gap-2"
       role="status"
       aria-live="polite"
+      aria-label={exhausted ? 'No guesses left' : `${left} of ${max} guesses left`}
     >
-      {exhausted
-        ? 'No guesses left'
-        : `${used} of ${max} guesses used · ${left} left`}
+      <div className="flex items-center gap-1.5">
+        {Array.from({ length: max }).map((_, i) => {
+          const filled = i < left;
+          return (
+            <span
+              key={i}
+              aria-hidden
+              className="block h-2 w-2 rounded-full border"
+              style={{
+                backgroundColor: filled ? dotActive : 'transparent',
+                borderColor: filled ? dotActive : 'var(--color-hairline-strong)',
+              }}
+            />
+          );
+        })}
+      </div>
+      <span
+        className={
+          'font-mono text-[10px] uppercase tracking-[0.12em] ' + labelTone
+        }
+      >
+        {labelText}
+      </span>
     </div>
   );
 }
@@ -1116,6 +1144,7 @@ function PillStat({
   extra,
   pulse,
   streakHalo,
+  streakActive,
 }: {
   label: string;
   value: string;
@@ -1127,6 +1156,9 @@ function PillStat({
   // notes; mobile pills include score + streak in one container,
   // so the ring celebrates the moment as a whole.
   streakHalo?: boolean;
+  // Persistent gold ring while a streak is alive (streak >= 2).
+  // Removed on streak reset.
+  streakActive?: boolean;
 }) {
   const palette =
     tone === 'ink'
@@ -1145,7 +1177,8 @@ function PillStat({
       className={
         'inline-flex items-baseline gap-1.5 rounded-full border px-3 py-1.5 text-xs backdrop-blur-sm ' +
         palette +
-        (streakHalo ? ' pfh-streak-halo' : '')
+        (streakHalo ? ' pfh-streak-halo' : '') +
+        (streakActive ? ' pfh-streak-active' : '')
       }
     >
       <span className={'font-mono text-[10px] uppercase tracking-[0.08em] ' + labelTone}>
@@ -1194,6 +1227,7 @@ function StatTile({
   featured,
   pulse,
   streakHalo,
+  streakActive,
 }: {
   label: string;
   value: string;
@@ -1204,6 +1238,9 @@ function StatTile({
   // gold expanding-ring on the tile with a color flash on the digit.
   // Re-mounted by changing `key` upstream so the animation restarts.
   streakHalo?: boolean;
+  // Persistent gold ring around the tile for the whole time the
+  // player is on a streak. Reset removes it.
+  streakActive?: boolean;
 }) {
   const valueClasses = ['leading-none', 'tabular-nums'];
   if (streakHalo) valueClasses.push('pfh-streak-flash');
@@ -1215,7 +1252,8 @@ function StatTile({
         (featured
           ? 'border-(--color-ink) bg-(--color-ink) text-white'
           : 'border-(--color-hairline) bg-white') +
-        (streakHalo ? ' pfh-streak-halo' : '')
+        (streakHalo ? ' pfh-streak-halo' : '') +
+        (streakActive ? ' pfh-streak-active' : '')
       }
     >
       <span
