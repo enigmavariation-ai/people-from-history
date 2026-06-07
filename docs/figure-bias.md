@@ -6,9 +6,9 @@ _1043 enabled figures_
 
 | Difficulty | Count | Share |
 | --- | --- | --- |
-| medium | 685 | 65.7% |
-| easy | 188 | 18.0% |
-| hard | 170 | 16.3% |
+| medium | 767 | 73.5% |
+| hard | 176 | 16.9% |
+| easy | 100 | 9.6% |
 
 ## Continent (region keyword match)
 
@@ -67,59 +67,59 @@ _Total tagged across continents ≥ 1043 because dual-region rows like "Germany 
 
 | Gender | Count | Share |
 | --- | --- | --- |
-| Male | 508 | 48.7% |
-| Unknown | 441 | 42.3% |
-| Female | 94 | 9.0% |
+| Male | 784 | 75.2% |
+| Female | 133 | 12.8% |
+| Unknown | 126 | 12.1% |
 
 ## Difficulty × Continent
 
 |  | North America | Europe | Asia | South America | Africa | Oceania | Other / unmapped | Total |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **easy** | 83 | 66 | 13 | 5 | 6 | 1 | 19 | 193 |
-| **medium** | 144 | 353 | 78 | 19 | 33 | 4 | 75 | 706 |
-| **hard** | 14 | 83 | 46 | 4 | 15 | 1 | 12 | 175 |
+| **easy** | 31 | 38 | 11 | 3 | 6 | 0 | 14 | 103 |
+| **medium** | 190 | 381 | 80 | 21 | 33 | 5 | 80 | 790 |
+| **hard** | 20 | 83 | 46 | 4 | 15 | 1 | 12 | 181 |
 
 ## Difficulty × Era
 
 |  | 21st century | 20th century | 19th century | 18th century | 17th century | Renaissance (15th–16th) | Medieval (5th–14th) | Ancient / Classical | Unclassified | Total |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **easy** | 35 | 95 | 28 | 6 | 4 | 9 | 3 | 8 | 0 | 188 |
-| **medium** | 51 | 316 | 134 | 36 | 34 | 47 | 20 | 46 | 1 | 685 |
-| **hard** | 3 | 35 | 18 | 9 | 9 | 29 | 34 | 30 | 3 | 170 |
+| **easy** | 14 | 55 | 11 | 5 | 3 | 5 | 1 | 6 | 0 | 100 |
+| **medium** | 69 | 353 | 151 | 37 | 35 | 51 | 22 | 48 | 1 | 767 |
+| **hard** | 6 | 38 | 18 | 9 | 9 | 29 | 34 | 30 | 3 | 176 |
 
 ## Easy-tier gaps
 
-_(no continents are entirely missing from Easy)_
+- Oceania — 0 in Easy, 5 Medium + 1 Hard
 
 ## Top 10 fields in Easy
 
 | Field | Easy count | Share of Easy |
 | --- | --- | --- |
-| Politics | 34 | 18.1% |
-| Music | 31 | 16.5% |
-| Film | 29 | 15.4% |
-| Literature | 14 | 7.4% |
-| Royalty | 13 | 6.9% |
-| Religion | 8 | 4.3% |
-| Art | 5 | 2.7% |
-| Painting | 5 | 2.7% |
-| Comedy | 5 | 2.7% |
-| Military | 4 | 2.1% |
+| Politics | 23 | 23.0% |
+| Music | 13 | 13.0% |
+| Royalty | 13 | 13.0% |
+| Film | 10 | 10.0% |
+| Religion | 8 | 8.0% |
+| Art | 4 | 4.0% |
+| Literature | 3 | 3.0% |
+| Physics | 2 | 2.0% |
+| Philosophy | 2 | 2.0% |
+| Activism | 2 | 2.0% |
 
 ## Top 10 regions in Easy
 
 | Region (raw) | Easy count | Share of Easy |
 | --- | --- | --- |
-| USA | 73 | 38.8% |
-| United Kingdom | 15 | 8.0% |
-| Russia | 10 | 5.3% |
-| France | 8 | 4.3% |
-| Germany | 7 | 3.7% |
-| Italy | 7 | 3.7% |
-| England | 6 | 3.2% |
-| Austria | 5 | 2.7% |
-| Spain | 3 | 1.6% |
-| Argentina | 3 | 1.6% |
+| USA | 26 | 26.0% |
+| United Kingdom | 11 | 11.0% |
+| Russia | 7 | 7.0% |
+| Germany | 5 | 5.0% |
+| England | 4 | 4.0% |
+| Austria | 4 | 4.0% |
+| France | 4 | 4.0% |
+| Italy | 3 | 3.0% |
+| India | 3 | 3.0% |
+| Egypt | 2 | 2.0% |
 
 ## Notes
 
