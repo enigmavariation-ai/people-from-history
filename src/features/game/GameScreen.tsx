@@ -1056,8 +1056,11 @@ function DesktopTree(
             </div>
           </div>
 
-          {/* Right zone: dossier — scrolls internally if content is taller than row */}
-          <div className="min-h-0 overflow-y-auto bg-(--color-paper) px-8 pb-7 pt-7">
+          {/* Right zone: dossier split into a scrollable content area
+              + a sticky bottom action bar so the give-up / next button
+              is always visible without scrolling between rounds. */}
+          <div className="flex min-h-0 flex-col bg-(--color-paper)">
+            <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-4 pt-5">
             <DossierHeader first>This round</DossierHeader>
             {isPractice ? (
               <div className="mb-6 grid grid-cols-2 gap-2.5">
@@ -1080,7 +1083,7 @@ function DesktopTree(
                 />
               </div>
             ) : (
-              <div className="mb-6 grid grid-cols-3 gap-2.5">
+              <div className="mb-4 grid grid-cols-3 gap-2.5">
                 <StatTile label="Score" value={`${potential}`} featured />
                 <StatTile label={scoreLabel} value={`${score}`} pulse={pulse} />
                 <StatTile
@@ -1094,7 +1097,8 @@ function DesktopTree(
               </div>
             )}
 
-            <DossierHeader>Your guess</DossierHeader>
+            {/* No "Your guess" header — the input placeholder already
+                reads "Who is this person?" which says the same thing. */}
             <div className="mb-2">
               <GuessInput
                 value={guess}
@@ -1122,7 +1126,7 @@ function DesktopTree(
 
             <FigureLearnMore figure={figure} outcome={outcome} />
 
-            <div className="mt-5 md:mt-6">
+            <div className="mt-4">
               <div className="mb-2 flex items-baseline justify-between">
                 <DossierHeader className="!m-0">Hints</DossierHeader>
                 <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
@@ -1137,8 +1141,12 @@ function DesktopTree(
                 onUse={onUseHint}
               />
             </div>
+            </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-(--color-rule) pt-4 md:mt-7">
+            {/* Sticky bottom action — always visible regardless of scroll
+                position above, so the player never has to scroll to find
+                Next / Give-up between rounds. */}
+            <div className="flex flex-shrink-0 items-center justify-between border-t border-(--color-rule) bg-(--color-paper) px-7 py-3.5">
               {outcome === 'playing' ? (
                 <button
                   onClick={onGiveUp}
@@ -1453,7 +1461,7 @@ function HintsArea({
   onUse: (key: HintType) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
+    <div className="grid grid-cols-2 gap-2">
       {HINTS.map((h) => {
         const used = usedHints.includes(h.key);
         const value = hintValue(figure, h.key);
