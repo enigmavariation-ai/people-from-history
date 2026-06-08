@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 type ShareCardProps = {
   text: string;
@@ -15,12 +15,12 @@ type ShareCardProps = {
 
 type ShareOutcome = 'idle' | 'copied' | 'downloaded' | 'failed';
 
-// Preview-first share card. The text preview is always visible (so
-// users see what they'll send before they share). A single Share
-// button opens the OS-native share sheet via Web Share. When
-// `getImage` is provided AND the platform supports sharing files
-// (most mobile browsers do), a rendered PNG is attached. Otherwise we
-// fall back to text-only share, then clipboard, then file download.
+// Button-only share card. The actual share image is only rendered when
+// the player taps Share (the native share sheet then shows it), keeping
+// the result pages compact on both web and mobile. When `getImage` is
+// provided AND the platform supports sharing files (most mobile
+// browsers do), a rendered PNG is attached. Otherwise we fall back to
+// text-only share, then clipboard, then file download.
 export function ShareCard({
   text,
   title = 'People from History',
@@ -28,29 +28,6 @@ export function ShareCard({
   getImage,
 }: ShareCardProps) {
   const [outcome, setOutcome] = useState<ShareOutcome>('idle');
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  // Render the preview image once on mount (and whenever text changes
-  // so a new round refreshes). Object URLs are revoked on cleanup.
-  useEffect(() => {
-    if (!getImage) return;
-    let cancelled = false;
-    let url: string | null = null;
-    getImage()
-      .then((blob) => {
-        if (cancelled) return;
-        url = URL.createObjectURL(blob);
-        setPreviewUrl(url);
-      })
-      .catch(() => {
-        // Silently skip preview — share button still works text-only.
-      });
-    return () => {
-      cancelled = true;
-      if (url) URL.revokeObjectURL(url);
-      setPreviewUrl(null);
-    };
-  }, [getImage, text]);
 
   const handleShare = async () => {
     // Try image+text first when both are available.
@@ -110,28 +87,6 @@ export function ShareCard({
 
   return (
     <div>
-      <div className="mb-2 flex items-baseline justify-between">
-        <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
-          Share your result
-        </div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
-          Preview
-        </div>
-      </div>
-      {previewUrl ? (
-        <img
-          src={previewUrl}
-          alt="Share preview"
-          className="mb-3 block w-full rounded-card border border-(--color-rule) bg-(--color-paper)"
-        />
-      ) : (
-        <pre
-          aria-label="Share preview"
-          className="mb-3 whitespace-pre-wrap break-words rounded-card border border-(--color-rule) bg-(--color-paper) px-5 py-4 font-mono text-[13px] leading-[1.6] text-(--color-body)"
-        >
-          {text}
-        </pre>
-      )}
       <button
         onClick={handleShare}
         className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-button border border-(--color-amber) bg-(--color-amber) px-6 py-3 text-sm font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors duration-150 hover:bg-(--color-amber-hover)"
@@ -164,7 +119,7 @@ export function ShareCard({
       )}
       {outcome === 'failed' && (
         <div className="mt-2 text-center text-xs text-(--color-error)">
-          Couldn't share automatically. Long-press the preview to save.
+          Couldn't share automatically. Tap Share again or copy the text manually.
         </div>
       )}
     </div>
