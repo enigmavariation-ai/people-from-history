@@ -134,14 +134,8 @@ export function DailyResult({ goTo }: DailyResultProps) {
           <AppMenu goTo={goTo} currentScreen="daily" />
         </div>
 
-        <div className="mb-3 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
+        <div className="mb-6 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted) md:mb-8">
           § Daily · {dateLabel}
-        </div>
-
-        <div className="pfh-ornament mb-8">
-          <div className="rule" />
-          <div className="dot" />
-          <div className="rule" />
         </div>
 
         {/* Body — single column on mobile, two columns on desktop with
@@ -277,31 +271,28 @@ export function DailyResult({ goTo }: DailyResultProps) {
           </div>
         )}
 
-        <div className="pfh-ornament mb-6 mt-10">
-          <div className="rule" />
-          <div className="dot" />
-          <div className="rule" />
-        </div>
-
-        <div className="mb-3 text-center">
-          <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
-            Next puzzle in
+        {/* Compact footer — countdown + cross-link on one row separated
+            by a thin hairline rule. Centred on mobile so it doesn't
+            run too wide; spaced apart on desktop. */}
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 border-t border-(--color-rule) pt-5 text-center sm:flex-row sm:gap-5 sm:text-left">
+          <div className="inline-flex items-baseline gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-muted)">
+              Next puzzle
+            </span>
+            <span
+              className="tabular-nums leading-none"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 18,
+                fontWeight: 500,
+                color: 'var(--color-ink)',
+                letterSpacing: '-0.012em',
+              }}
+            >
+              {timeLeft}
+            </span>
           </div>
-          <div
-            className="tabular-nums leading-none"
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 28,
-              fontWeight: 500,
-              color: 'var(--color-ink)',
-              letterSpacing: '-0.012em',
-            }}
-          >
-            {timeLeft}
-          </div>
-        </div>
-
-        <div className="text-center">
+          <span aria-hidden className="hidden text-(--color-muted) sm:inline">·</span>
           <a
             href="#challenge"
             onClick={(e) => {
