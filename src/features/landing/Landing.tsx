@@ -361,7 +361,7 @@ export function Landing({ goTo }: LandingProps) {
       <section className="bg-(--color-bg) px-5 py-14 md:px-8 md:py-20">
         <div className="mx-auto max-w-[720px]">
           <div className="mb-3 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-amber)">
-            § Questions
+            Questions
           </div>
           <h2
             className="mb-8 text-center"
@@ -421,7 +421,7 @@ export function Landing({ goTo }: LandingProps) {
 
         <div className="relative mx-auto max-w-[640px] text-center">
           <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-gold) md:mb-[18px]">
-            § Today
+            Today
           </div>
           <h2
             className="mb-4"

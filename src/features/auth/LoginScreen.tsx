@@ -139,7 +139,7 @@ export function LoginScreen({ goTo }: LoginScreenProps) {
             <AppMenu goTo={goTo} currentScreen="login" />
           </div>
           <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
-            § Check your inbox
+            Check your inbox
           </div>
           <h1
             className="mb-4"
@@ -180,7 +180,7 @@ export function LoginScreen({ goTo }: LoginScreenProps) {
         </div>
 
         <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
-          § {mode === 'signup' ? 'Save your progress' : 'Welcome back'}
+          {mode === 'signup' ? 'Save your progress' : 'Welcome back'}
         </div>
         <h1
           className="mb-4"

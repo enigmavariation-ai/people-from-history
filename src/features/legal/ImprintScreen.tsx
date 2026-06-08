@@ -16,7 +16,7 @@ export function ImprintScreen({ goTo }: ImprintScreenProps) {
         </div>
 
         <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
-          § Legal
+          Legal
         </div>
         <h1
           className="mb-2"

@@ -85,7 +85,7 @@ export function Coachmarks({ steps, storageKey }: CoachmarksProps) {
       >
         <div className="mb-3 flex items-center justify-between">
           <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
-            § {current.eyebrow}
+            {current.eyebrow}
           </div>
           <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-(--color-muted)">
             {step + 1} of {steps.length}

@@ -181,7 +181,7 @@ export function ProfileScreen({ goTo }: ProfileScreenProps) {
         </div>
 
         <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
-          § Profile
+          Profile
         </div>
 
         {/* Identity card */}

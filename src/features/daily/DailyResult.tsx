@@ -76,7 +76,7 @@ export function DailyResult({ goTo }: DailyResultProps) {
       <div className="h-[calc(100vh-var(--app-bar-h))] overflow-y-auto bg-(--color-bg)">
         <div className="mx-auto max-w-[440px] px-6 pb-24 pt-12 text-center">
           <div className="mb-3.5 font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-            § Today's puzzle
+            Today's puzzle
           </div>
           <h1
             className="mb-3"
@@ -135,7 +135,7 @@ export function DailyResult({ goTo }: DailyResultProps) {
         </div>
 
         <div className="mb-6 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted) md:mb-8">
-          § Daily · {dateLabel}
+          Daily · {dateLabel}
         </div>
 
         {/* Body — single column on mobile, two columns on desktop with

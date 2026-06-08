@@ -36,7 +36,7 @@ export function SignUpNudge({
   return (
     <div className="rounded-card border border-(--color-amber)/60 bg-(--color-amber-soft)/30 px-4 py-4 md:px-5 md:py-5">
       <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
-        § {eyebrow}
+        {eyebrow}
       </div>
       <div
         className="mb-1.5 leading-snug"

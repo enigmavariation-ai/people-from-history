@@ -45,7 +45,7 @@ export function LeaderboardScreen({ goTo }: LeaderboardScreenProps) {
         </div>
 
         <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-muted)">
-          § Standings
+          Standings
         </div>
         <h1
           className="mb-3"

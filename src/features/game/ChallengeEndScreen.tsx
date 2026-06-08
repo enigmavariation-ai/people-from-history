@@ -251,7 +251,7 @@ export function ChallengeEndScreen({ goTo }: ChallengeEndScreenProps) {
         </div>
 
         <div className="mb-4 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-(--color-muted)">
-          § Challenge · {dateLabel}
+          Challenge · {dateLabel}
         </div>
 
         {/* Hero scoreboard — navy contrast panel. Big number, editorial

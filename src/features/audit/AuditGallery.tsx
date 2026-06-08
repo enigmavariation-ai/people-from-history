@@ -56,7 +56,7 @@ export function AuditGallery({ goTo }: AuditGalleryProps) {
         </div>
 
         <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-(--color-amber)">
-          § Internal · audit
+          Internal · audit
         </div>
         <h1
           className="mb-2"

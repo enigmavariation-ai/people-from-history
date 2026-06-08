@@ -165,7 +165,7 @@ export function FigureEditor({ figure, onClose, onSaved }: FigureEditorProps) {
         <div className="flex items-baseline justify-between border-b border-(--color-rule) px-5 py-3">
           <div>
             <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-(--color-amber)">
-              § Curate
+              Curate
             </div>
             <div
               className="leading-tight"
